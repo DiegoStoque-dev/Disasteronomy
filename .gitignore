@@ -1,0 +1,33 @@
+# Godot 4+ specific ignores
+/.godot/
+/.import/
+/bin/
+/obj/
+/.dotnet/
+
+# Build exportado
+/Build/
+
+# Android
+/android/
+
+# Visual Studio / .NET
+*.sln
+*.csproj
+*.user
+*.userprefs
+*.pidb
+*.suo
+*.opensdf
+*.sdf
+/.vs/
+/.vscode/
+
+# macOS
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
