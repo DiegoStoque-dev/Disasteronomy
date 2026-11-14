@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://r7ap2845o0bl"
+path="res://.godot/imported/My Room.mp3-2ccf3be31d73ac5b28d6c863eeb89a37.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/My Room.mp3"
+dest_files=["res://.godot/imported/My Room.mp3-2ccf3be31d73ac5b28d6c863eeb89a37.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://cseaj5jgp6inf"
+path="res://.godot/imported/Sealed Loop1.wav-9fd73fd41ae0fd17788cc7ed6c6a51b6.sample"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops WAVs/Sealed Loop1.wav"
+dest_files=["res://.godot/imported/Sealed Loop1.wav-9fd73fd41ae0fd17788cc7ed6c6a51b6.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

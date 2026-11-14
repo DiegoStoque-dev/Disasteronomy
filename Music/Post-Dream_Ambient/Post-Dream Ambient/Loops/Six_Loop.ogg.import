@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://dsm27xswf5qel"
+path="res://.godot/imported/Six_Loop.ogg-77624d04b6d09a5a83c38dd77a8935c5.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Post-Dream_Ambient/Post-Dream Ambient/Loops/Six_Loop.ogg"
+dest_files=["res://.godot/imported/Six_Loop.ogg-77624d04b6d09a5a83c38dd77a8935c5.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

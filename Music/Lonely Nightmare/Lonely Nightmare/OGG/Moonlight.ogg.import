@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://c5psst5u0t7cu"
+path="res://.godot/imported/Moonlight.ogg-8f8d78b7c91945e1ad5df606f23886f3.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/OGG/Moonlight.ogg"
+dest_files=["res://.godot/imported/Moonlight.ogg-8f8d78b7c91945e1ad5df606f23886f3.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

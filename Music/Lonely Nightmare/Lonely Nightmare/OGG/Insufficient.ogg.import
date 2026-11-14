@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://ckogrx2eu4q3p"
+path="res://.godot/imported/Insufficient.ogg-73d989834f3910a88fb6f720edd34bb1.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/OGG/Insufficient.ogg"
+dest_files=["res://.godot/imported/Insufficient.ogg-73d989834f3910a88fb6f720edd34bb1.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

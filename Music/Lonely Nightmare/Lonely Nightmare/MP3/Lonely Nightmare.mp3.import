@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://4fht4ntwrfxe"
+path="res://.godot/imported/Lonely Nightmare.mp3-80467d02cb48e42205b2946106d421f0.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/Lonely Nightmare.mp3"
+dest_files=["res://.godot/imported/Lonely Nightmare.mp3-80467d02cb48e42205b2946106d421f0.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

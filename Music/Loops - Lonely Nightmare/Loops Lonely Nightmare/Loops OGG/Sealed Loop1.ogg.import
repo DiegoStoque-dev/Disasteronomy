@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://dmxhjdqx57lmj"
+path="res://.godot/imported/Sealed Loop1.ogg-77fd5f2eff4bd5493f6dd1a58bdf1c4e.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops OGG/Sealed Loop1.ogg"
+dest_files=["res://.godot/imported/Sealed Loop1.ogg-77fd5f2eff4bd5493f6dd1a58bdf1c4e.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

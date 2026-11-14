@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://bt0bi823p5wo6"
+path="res://.godot/imported/Tempest.ogg-ef41eb52afd14e7d40301e37ce1786f7.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/OGG/Tempest.ogg"
+dest_files=["res://.godot/imported/Tempest.ogg-ef41eb52afd14e7d40301e37ce1786f7.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

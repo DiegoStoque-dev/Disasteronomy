@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://7al3k0hb4ah8"
+path="res://.godot/imported/6- The Veil of Night.ogg-a59ea45b53a94fc5d805f3d6ee413375.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Mind's Eye Pack/Pack/6- The Veil of Night.ogg"
+dest_files=["res://.godot/imported/6- The Veil of Night.ogg-a59ea45b53a94fc5d805f3d6ee413375.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://p06f8ubxyjsh"
+path="res://.godot/imported/9- White.mp3-948c2e7849c207cef24766915fb7be00.mp3str"
+
+[deps]
+
+source_file="res://Music/Mind's Eye Pack/Pack/9- White.mp3"
+dest_files=["res://.godot/imported/9- White.mp3-948c2e7849c207cef24766915fb7be00.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

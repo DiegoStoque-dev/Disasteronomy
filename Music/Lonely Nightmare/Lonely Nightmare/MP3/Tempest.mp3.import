@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://db77bwae1kbv5"
+path="res://.godot/imported/Tempest.mp3-d9473cf6c1f431b55076f4b5d0ea71fa.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/Tempest.mp3"
+dest_files=["res://.godot/imported/Tempest.mp3-d9473cf6c1f431b55076f4b5d0ea71fa.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

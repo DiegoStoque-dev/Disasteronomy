@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://b4uc7a5vkg7u3"
+path="res://.godot/imported/Saved Notes Spoti.ogg-46bb6f9b80be6c71c1d2026ca84235c2.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/OGG/Saved Notes Spoti.ogg"
+dest_files=["res://.godot/imported/Saved Notes Spoti.ogg-46bb6f9b80be6c71c1d2026ca84235c2.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

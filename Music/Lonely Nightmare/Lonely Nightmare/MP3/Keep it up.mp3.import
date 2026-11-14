@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dexao8ixcghyo"
+path="res://.godot/imported/Keep it up.mp3-57d4268412f979494c9b9f50993c30d3.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/Keep it up.mp3"
+dest_files=["res://.godot/imported/Keep it up.mp3-57d4268412f979494c9b9f50993c30d3.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

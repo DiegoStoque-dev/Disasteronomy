@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://d1k0gxvoweadh"
+path="res://.godot/imported/Lost in Polaroids.ogg-509f4f943f0bf2f51314a153297e80b8.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/OGG/Lost in Polaroids.ogg"
+dest_files=["res://.godot/imported/Lost in Polaroids.ogg-509f4f943f0bf2f51314a153297e80b8.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

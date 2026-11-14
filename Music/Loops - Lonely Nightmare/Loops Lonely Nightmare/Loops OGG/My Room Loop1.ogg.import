@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cr8or3g4qjbla"
+path="res://.godot/imported/My Room Loop1.ogg-9bca2cc733041e50068afa7b5490fefc.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops OGG/My Room Loop1.ogg"
+dest_files=["res://.godot/imported/My Room Loop1.ogg-9bca2cc733041e50068afa7b5490fefc.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cn417uhabu0is"
+path="res://.godot/imported/Silent Voices Loop1.ogg-fa5c2d4339742354b9015dd4a360e955.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops OGG/Silent Voices Loop1.ogg"
+dest_files=["res://.godot/imported/Silent Voices Loop1.ogg-fa5c2d4339742354b9015dd4a360e955.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

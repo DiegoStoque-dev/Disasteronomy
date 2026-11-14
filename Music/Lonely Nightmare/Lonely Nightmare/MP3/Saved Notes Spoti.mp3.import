@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bld6lh1k1cuam"
+path="res://.godot/imported/Saved Notes Spoti.mp3-abe79122495fdaf19784c380dd05ea89.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/Saved Notes Spoti.mp3"
+dest_files=["res://.godot/imported/Saved Notes Spoti.mp3-abe79122495fdaf19784c380dd05ea89.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

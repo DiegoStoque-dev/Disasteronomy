@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://crfyj1jf438wq"
+path="res://.godot/imported/Mental Vortex Loop 1.wav-cd29060bcc1aa0a6e492e833682ad9a9.sample"
+
+[deps]
+
+source_file="res://Music/Mind's Eye Loops v1/Mind's Eye Loops v1/2 Mental Vortex/Mental Vortex Loop 1.wav"
+dest_files=["res://.godot/imported/Mental Vortex Loop 1.wav-cd29060bcc1aa0a6e492e833682ad9a9.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

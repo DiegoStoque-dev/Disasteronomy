@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://b2hnc37x0h2ys"
+path="res://.godot/imported/Post-Dream.mp3-eecf6dcf17dc6efd635761909877383f.mp3str"
+
+[deps]
+
+source_file="res://Music/Post-Dream_Ambient/Post-Dream Ambient/MP3/Post-Dream.mp3"
+dest_files=["res://.godot/imported/Post-Dream.mp3-eecf6dcf17dc6efd635761909877383f.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

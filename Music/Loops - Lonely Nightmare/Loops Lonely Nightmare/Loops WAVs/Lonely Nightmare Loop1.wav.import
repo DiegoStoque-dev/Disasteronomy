@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://p67d1n4rc5ew"
+path="res://.godot/imported/Lonely Nightmare Loop1.wav-eaca02187be3e5104a9da0a882a4616b.sample"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops WAVs/Lonely Nightmare Loop1.wav"
+dest_files=["res://.godot/imported/Lonely Nightmare Loop1.wav-eaca02187be3e5104a9da0a882a4616b.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://cxtgbq1ipj83l"
+path="res://.godot/imported/2 Mind's Eye Loop1.wav-3911f2986e9ceb7a2ee621c8ab9605a7.sample"
+
+[deps]
+
+source_file="res://Music/Mind's Eye Loops v1/Mind's Eye Loops v1/1 Mind's Eye/2 Mind's Eye Loop1.wav"
+dest_files=["res://.godot/imported/2 Mind's Eye Loop1.wav-3911f2986e9ceb7a2ee621c8ab9605a7.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

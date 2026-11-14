@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://syp0rxf4hfpf"
+path="res://.godot/imported/5- Fredelig Sinn.ogg-f2b36cef801fae6232bf24445b50d952.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Mind's Eye Pack/Pack/5- Fredelig Sinn.ogg"
+dest_files=["res://.godot/imported/5- Fredelig Sinn.ogg-f2b36cef801fae6232bf24445b50d952.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

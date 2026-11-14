@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://be44jvtljgep7"
+path="res://.godot/imported/Moonlight Loop1.ogg-488fdf3f21a283e90b4a16e91c767b1f.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops OGG/Moonlight Loop1.ogg"
+dest_files=["res://.godot/imported/Moonlight Loop1.ogg-488fdf3f21a283e90b4a16e91c767b1f.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

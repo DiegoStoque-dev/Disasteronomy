@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://du4i6ik6j51af"
+path="res://.godot/imported/two.ogg-3c33c85b26c5794f228fc9170744ef71.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Post-Dream_Ambient/Post-Dream Ambient/OGG/two.ogg"
+dest_files=["res://.godot/imported/two.ogg-3c33c85b26c5794f228fc9170744ef71.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

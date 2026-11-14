@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://bnixe0r12ldx0"
+path="res://.godot/imported/Keep it up Loop1.ogg-bab5fcb97de6dfe09cad60f5cd3e65e2.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops OGG/Keep it up Loop1.ogg"
+dest_files=["res://.godot/imported/Keep it up Loop1.ogg-bab5fcb97de6dfe09cad60f5cd3e65e2.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
