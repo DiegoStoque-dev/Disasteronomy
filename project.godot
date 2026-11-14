@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="disasteronomy"
-run/main_scene="uid://bgdobcmmtfqc0"
+run/main_scene="res://Scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [autoload]
@@ -26,12 +26,12 @@ Global="*res://Scripts/Core/Global.cs"
 [display]
 
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
 window/stretch/shrink=1
 
 [dotnet]
 
 project/assembly_name="disasteronomy"
+
 [input]
 
 ui_left={
@@ -96,9 +96,9 @@ inventario={
 
 [rendering]
 
+textures/canvas_textures/default_texture_filter=0
+viewport/hdr_2d=true
 textures/default_texture_filter=0
 textures/default_texture_repeat=0
-textures/canvas_textures/default_texture_filter=0
 quality/filters/use_anisotropic_filtering=false
 quality/filters/use_mipmaps=false
-viewport/hdr_2d=true
