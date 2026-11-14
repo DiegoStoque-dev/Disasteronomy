@@ -5,7 +5,7 @@ public partial class Player : CharacterBody2D
 {
 	private const float Speed = 200f;
 
-	private AnimatedSprite2D sprite;
+	private AnimatedSprite2D? sprite;
 	private Label nicknameLabel;
 	private Node networkHandler;
 	private Callable nicknameChangedCallable;
@@ -32,7 +32,9 @@ public partial class Player : CharacterBody2D
 			UpdateNickname(networkHandler.Call("get_player_nickname", playerId).AsString());
 
 		sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-		GetNode<Camera2D>("Camera2D").Enabled = IsMultiplayerAuthority();
+		var camera = GetNodeOrNull<Camera2D>("Camera2D");
+		if (camera != null)
+			camera.Enabled = IsMultiplayerAuthority();
 
 		if (IsMultiplayerAuthority())
 			GD.Print("Controlando meu personagem: " + Name);
@@ -84,6 +86,9 @@ public partial class Player : CharacterBody2D
 
 	private void UpdateAnimation(string animationName)
 	{
+		if (sprite == null)
+			return;
+
 		if (sprite.Animation != animationName)
 			sprite.Play(animationName);
 	}

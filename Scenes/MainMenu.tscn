@@ -1,21 +1,194 @@
 [gd_scene format=3 uid="uid://d1q8p8cfr6pf1"]
 
-[ext_resource type="Texture2D" uid="uid://rsm36ng2bnhb" path="res://Sprites/UI/MainMenu/cinsa.png" id="1_tt5f1"]
+[ext_resource type="Script" path="res://Scripts/MainMenu.gd" id="1_mainmenu_script"]
 
-[node name="MainMenu" type="Node2D" unique_id=193100804]
+[sub_resource type="StyleBoxFlat" id="stylebox_panel"]
+bg_color = Color(0.12, 0.12, 0.16, 0.95)
+border_width = Vector2(3, 3)
+border_color = Color(0.5, 0.5, 0.7, 1.0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+shadow_size = 8
+shadow_color = Color(0, 0, 0, 0.7)
 
-[node name="ColorRect" type="ColorRect" parent="." unique_id=126745977]
+[sub_resource type="StyleBoxFlat" id="stylebox_button_normal"]
+bg_color = Color(0.25, 0.25, 0.35, 1.0)
+bg_color_hover = Color(0.4, 0.4, 0.55, 1.0)
+bg_color_pressed = Color(0.15, 0.15, 0.2, 1.0)
+border_width = Vector2(2, 2)
+border_color = Color(0.7, 0.7, 0.9, 1.0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+shadow_size = 2
+shadow_color = Color(0, 0, 0, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="stylebox_button_disabled"]
+bg_color = Color(0.15, 0.15, 0.18, 1.0)
+bg_color_hover = Color(0.15, 0.15, 0.18, 1.0)
+bg_color_pressed = Color(0.15, 0.15, 0.18, 1.0)
+border_width = Vector2(2, 2)
+border_color = Color(0.5, 0.5, 0.5, 1.0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+
+[node name="MainMenu" type="Node2D"]
+script = ExtResource("1_mainmenu_script")
+
+[node name="ColorRect" type="ColorRect" parent="."]
 offset_left = -41.0
 offset_top = -30.0
 offset_right = 1205.0
 offset_bottom = 692.0
+color = Color(0.05, 0.05, 0.08, 1.0)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=688368863]
-offset_right = 738.0
-offset_bottom = 650.0
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+anchors_preset = 15
+offset_left = 250.0
+offset_top = 150.0
+offset_right = -250.0
+offset_bottom = -150.0
+alignment = 1
+custom_minimum_size = Vector2(300, 400)
+custom_constants/separation = 20
 
-[node name="TextureButton" type="TextureButton" parent="VBoxContainer" unique_id=957137858]
-texture_filter = 1
+[node name="LabelTitulo" type="Label" parent="VBoxContainer"]
 layout_mode = 2
-offset_transform_enabled = true
-texture_normal = ExtResource("1_tt5f1")
+text = "DISASTERONOMY"
+horizontal_alignment = 1
+vertical_alignment = 1
+custom_minimum_size = Vector2(0, 80)
+theme_overrides/fonts/font/font_size = 32
+theme_overrides/colors/font_color = Color(1, 1, 1, 1)
+
+[node name="HSeparatorTop" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 2)
+
+[node name="btn_start" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Iniciar Jogo"
+custom_minimum_size = Vector2(0, 50)
+focus_mode = 2
+cursor_shape = 0
+theme_overrides/styles/normal = SubResource("stylebox_button_normal")
+theme_overrides/styles/hover = SubResource("stylebox_button_normal")
+theme_overrides/styles/pressed = SubResource("stylebox_button_normal")
+theme_overrides/styles/disabled = SubResource("stylebox_button_disabled")
+theme_overrides/fonts/font/font_size = 20
+theme_overrides/colors/font_color = Color(1, 1, 1, 1)
+
+[node name="btn_config" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Configurações"
+custom_minimum_size = Vector2(0, 50)
+focus_mode = 2
+cursor_shape = 0
+theme_overrides/styles/normal = SubResource("stylebox_button_normal")
+theme_overrides/styles/hover = SubResource("stylebox_button_normal")
+theme_overrides/styles/pressed = SubResource("stylebox_button_normal")
+theme_overrides/styles/disabled = SubResource("stylebox_button_disabled")
+theme_overrides/fonts/font/font_size = 20
+theme_overrides/colors/font_color = Color(1, 1, 1, 1)
+
+[node name="btn_creditos" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Créditos"
+custom_minimum_size = Vector2(0, 50)
+focus_mode = 2
+cursor_shape = 0
+theme_overrides/styles/normal = SubResource("stylebox_button_normal")
+theme_overrides/styles/hover = SubResource("stylebox_button_normal")
+theme_overrides/styles/pressed = SubResource("stylebox_button_normal")
+theme_overrides/styles/disabled = SubResource("stylebox_button_disabled")
+theme_overrides/fonts/font/font_size = 20
+theme_overrides/colors/font_color = Color(1, 1, 1, 1)
+
+[node name="btn_sair" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Sair"
+custom_minimum_size = Vector2(0, 50)
+focus_mode = 2
+cursor_shape = 0
+theme_overrides/styles/normal = SubResource("stylebox_button_normal")
+theme_overrides/styles/hover = SubResource("stylebox_button_normal")
+theme_overrides/styles/pressed = SubResource("stylebox_button_normal")
+theme_overrides/styles/disabled = SubResource("stylebox_button_disabled")
+theme_overrides/fonts/font/font_size = 20
+theme_overrides/colors/font_color = Color(1, 1, 1, 1)
+
+[node name="PainelSaveModal" type="PanelContainer" parent="."]
+anchors_preset = 15
+offset_left = 300.0
+offset_top = 200.0
+offset_right = -300.0
+offset_bottom = -200.0
+custom_minimum_size = Vector2(450, 300)
+hide = true
+theme_overrides/panels/StyleBoxFlat = SubResource("stylebox_panel")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PainelSaveModal"]
+anchors_preset = 15
+offset_left = 40.0
+offset_top = 40.0
+offset_right = -40.0
+offset_bottom = -40.0
+alignment = 1
+custom_minimum_size = Vector2(370, 220)
+custom_constants/separation = 15
+
+[node name="LabelPergunta" type="Label" parent="PainelSaveModal/VBoxContainer"]
+layout_mode = 2
+text = "Deseja iniciar um novo jogo ou carregar o save existente?"
+horizontal_alignment = 1
+vertical_alignment = 1
+custom_minimum_size = Vector2(0, 50)
+theme_overrides/fonts/font/font_size = 18
+theme_overrides/colors/font_color = Color(1, 1, 1, 1)
+
+[node name="HSeparator" type="HSeparator" parent="PainelSaveModal/VBoxContainer"]
+layout_mode = 2
+
+[node name="btn_novo_jogo" type="Button" parent="PainelSaveModal/VBoxContainer"]
+layout_mode = 2
+text = "Novo Jogo"
+custom_minimum_size = Vector2(0, 45)
+focus_mode = 2
+cursor_shape = 0
+theme_overrides/styles/normal = SubResource("stylebox_button_normal")
+theme_overrides/styles/hover = SubResource("stylebox_button_normal")
+theme_overrides/styles/pressed = SubResource("stylebox_button_normal")
+theme_overrides/styles/disabled = SubResource("stylebox_button_disabled")
+theme_overrides/fonts/font/font_size = 18
+theme_overrides/colors/font_color = Color(1, 1, 1, 1)
+
+[node name="btn_continuar" type="Button" parent="PainelSaveModal/VBoxContainer"]
+layout_mode = 2
+text = "Continuar Save"
+custom_minimum_size = Vector2(0, 45)
+focus_mode = 2
+cursor_shape = 0
+theme_overrides/styles/normal = SubResource("stylebox_button_normal")
+theme_overrides/styles/hover = SubResource("stylebox_button_normal")
+theme_overrides/styles/pressed = SubResource("stylebox_button_normal")
+theme_overrides/styles/disabled = SubResource("stylebox_button_disabled")
+theme_overrides/fonts/font/font_size = 18
+theme_overrides/colors/font_color = Color(1, 1, 1, 1)
+
+[node name="btn_cancelar" type="Button" parent="PainelSaveModal/VBoxContainer"]
+layout_mode = 2
+text = "Cancelar"
+custom_minimum_size = Vector2(0, 45)
+focus_mode = 2
+cursor_shape = 0
+theme_overrides/styles/normal = SubResource("stylebox_button_normal")
+theme_overrides/styles/hover = SubResource("stylebox_button_normal")
+theme_overrides/styles/pressed = SubResource("stylebox_button_normal")
+theme_overrides/styles/disabled = SubResource("stylebox_button_disabled")
+theme_overrides/fonts/font/font_size = 18
+theme_overrides/colors/font_color = Color(1, 1, 1, 1)

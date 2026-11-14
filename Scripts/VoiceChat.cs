@@ -5,9 +5,9 @@ using System.Collections.Generic;
 public partial class VoiceChat : Node
 {
 	private double debugTimer = 0;
-	private AudioStreamPlayer microphonePlayer;
-	private AudioEffectCapture capture;
-	private Button voiceIndicator;
+	private AudioStreamPlayer? microphonePlayer;
+	private AudioEffectCapture? capture;
+	private Button? voiceIndicator;
 
 	private const int FramesPerPacket = 480;
 
@@ -86,10 +86,14 @@ public partial class VoiceChat : Node
 		if (pressed && !microphoneEnabled)
 		{
 			microphoneEnabled = true;
-			microphonePlayer.Play();
+			if (microphonePlayer != null)
+				microphonePlayer.Play();
 
-			voiceIndicator.Text = "Falando...";
-			voiceIndicator.Modulate = Colors.LimeGreen;
+			if (voiceIndicator != null)
+			{
+				voiceIndicator.Text = "Falando...";
+				voiceIndicator.Modulate = Colors.LimeGreen;
+			}
 
 			GD.Print("Microfone ativado!");
 		}
@@ -98,10 +102,14 @@ public partial class VoiceChat : Node
 		else if (!pressed && microphoneEnabled)
 		{
 			microphoneEnabled = false;
-			microphonePlayer.Stop();
+			if (microphonePlayer != null)
+				microphonePlayer.Stop();
 
-			voiceIndicator.Text = "Microfone desligado";
-			voiceIndicator.Modulate = Colors.Gray;
+			if (voiceIndicator != null)
+			{
+				voiceIndicator.Text = "Microfone desligado";
+				voiceIndicator.Modulate = Colors.Gray;
+			}
 
 			GD.Print("Microfone desativado!");
 		}
@@ -223,7 +231,7 @@ if (debugTimer >= 1.0)
 
 		if (!remotePlaybacks.TryGetValue(
 			senderId,
-			out AudioStreamGeneratorPlayback playback))
+			out AudioStreamGeneratorPlayback? playback))
 		{
 			playback = CreateRemotePlayer(senderId);
 		}
@@ -254,7 +262,7 @@ if (debugTimer >= 1.0)
 	}
 
 	// Cria um reprodutor para cada jogador
-	private AudioStreamGeneratorPlayback CreateRemotePlayer(long peerId)
+	private AudioStreamGeneratorPlayback? CreateRemotePlayer(long peerId)
 	{
 		AudioStreamGenerator generator = new AudioStreamGenerator();
 
@@ -270,7 +278,7 @@ if (debugTimer >= 1.0)
 
 		player.Play();
 
-		AudioStreamGeneratorPlayback playback =
+		AudioStreamGeneratorPlayback? playback =
 			player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
 
 		if (playback == null)
