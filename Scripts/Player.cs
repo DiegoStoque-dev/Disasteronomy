@@ -5,7 +5,7 @@ public partial class Player : CharacterBody2D
 {
 	private const float Speed = 200f;
 
-	private AnimatedSprite2D sprite;
+	private AnimatedSprite2D? sprite;
 	private string lastDirection = "down";
 
 	public override void _Ready()
@@ -21,7 +21,9 @@ public partial class Player : CharacterBody2D
 		}
 
 		sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-		GetNode<Camera2D>("Camera2D").Enabled = IsMultiplayerAuthority();
+		var camera = GetNodeOrNull<Camera2D>("Camera2D");
+		if (camera != null)
+			camera.Enabled = IsMultiplayerAuthority();
 
 		if (IsMultiplayerAuthority())
 			GD.Print("Controlando meu personagem: " + Name);
@@ -64,6 +66,9 @@ public partial class Player : CharacterBody2D
 
 	private void UpdateAnimation(string animationName)
 	{
+		if (sprite == null)
+			return;
+
 		if (sprite.Animation != animationName)
 			sprite.Play(animationName);
 	}
