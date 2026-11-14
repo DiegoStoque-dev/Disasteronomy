@@ -1,96 +1,21 @@
-[gd_scene load_steps=2 format=3 uid="fd5a3e1c-8b2f-4c1d-9a7e-6d3c2b1a0f8e"]
+[gd_scene format=3 uid="uid://d1q8p8cfr6pf1"]
 
-[ext_resource type="Script" path="res://Scripts/UI/MainMenu.cs" uid="a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
+[ext_resource type="Texture2D" uid="uid://rsm36ng2bnhb" path="res://Sprites/UI/MainMenu/cinsa.png" id="1_tt5f1"]
 
-[node name="MainMenu" type="Control" script=ExtResource("a1b2c3d4-e5f6-7890-abcd-ef1234567890")]
-anchor_left=0.0
-anchor_top=0.0
-anchor_right=1.0
-anchor_bottom=1.0
-offset_left=0.0
-offset_top=0.0
-offset_right=0.0
-offset_bottom=0.0
-layout_mode=0
-size_flags_horizontal=3
-size_flags_vertical=3
+[node name="MainMenu" type="Node2D" unique_id=193100804]
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
-anchor_left=0.0
-anchor_top=0.0
-anchor_right=1.0
-anchor_bottom=1.0
-offset_left=0.0
-offset_top=0.0
-offset_right=0.0
-offset_bottom=0.0
-layout_mode=0
-size_flags_horizontal=3
-size_flags_vertical=3
-alignment=1
-custom_minimum_size=Vector2(400, 300)
-theme_type_variations=PackedStringArray("PanelContainer")
+[node name="ColorRect" type="ColorRect" parent="." unique_id=126745977]
+offset_left = -41.0
+offset_top = -30.0
+offset_right = 1205.0
+offset_bottom = 692.0
 
-[node name="TitleLabel" type="Label" parent="VBoxContainer"]
-text="Disasteronomy"
-anchor_left=0.5
-anchor_top=0.0
-anchor_right=0.5
-anchor_bottom=0.0
-offset_left=-200.0
-offset_top=100.0
-offset_right=200.0
-offset_bottom=140.0
-layout_mode=0
-size_flags_horizontal=3
-size_flags_vertical=0
-horizontal_alignment=1
-vertical_alignment=0
-custom_minimum_size=Vector2(400, 40)
-theme_type_variations=PackedStringArray("TitleLabel")
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=688368863]
+offset_right = 738.0
+offset_bottom = 650.0
 
-[node name="StartButton" type="Button" parent="VBoxContainer"]
-text="Iniciar Jogo"
-anchor_left=0.5
-anchor_top=0.0
-anchor_right=0.5
-anchor_bottom=0.0
-offset_left=-100.0
-offset_top=160.0
-offset_right=100.0
-offset_bottom=200.0
-layout_mode=0
-size_flags_horizontal=3
-size_flags_vertical=0
-custom_minimum_size=Vector2(200, 40)
-button_pressed=false
-text_align=1
-focus_mode=0
-group="menu_buttons"
-connection=
-{
-"callable": Object("MainMenu", "main_menu", "_on_start_button_pressed")
-}
-
-[node name="QuitButton" type="Button" parent="VBoxContainer"]
-text="Sair"
-anchor_left=0.5
-anchor_top=0.0
-anchor_right=0.5
-anchor_bottom=0.0
-offset_left=-100.0
-offset_top=210.0
-offset_right=100.0
-offset_bottom=250.0
-layout_mode=0
-size_flags_horizontal=3
-size_flags_vertical=0
-custom_minimum_size=Vector2(200, 40)
-button_pressed=false
-text_align=1
-focus_mode=0
-group="menu_buttons"
-connection=
-{
-"callable": Object("MainMenu", "main_menu", "_on_quit_button_pressed")
-}
+[node name="TextureButton" type="TextureButton" parent="VBoxContainer" unique_id=957137858]
+texture_filter = 1
+layout_mode = 2
+offset_transform_enabled = true
+texture_normal = ExtResource("1_tt5f1")

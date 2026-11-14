@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="disasteronomy"
-run/main_scene="res://Scenes/MainMenu.tscn"
+run/main_scene="uid://d1q8p8cfr6pf1"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [autoload]
