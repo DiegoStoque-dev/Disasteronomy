@@ -527,7 +527,7 @@ shape = SubResource("RectangleShape2D_c2a8f")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2077756884]
 position = Vector2(0, -18)
 sprite_frames = SubResource("SpriteFrames_mkerq")
-animation = &"idle_right"
+animation = &"walk_right"
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1186331334]
 offset = Vector2(5, 5)
