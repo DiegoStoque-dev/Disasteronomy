@@ -10,6 +10,16 @@ public partial class Player : CharacterBody2D
 
 	public override void _Ready()
 	{
+		AddToGroup("network_players");
+		foreach (Node node in GetTree().GetNodesInGroup("network_players"))
+		{
+			if (node == this || node is not CharacterBody2D otherPlayer)
+				continue;
+
+			AddCollisionExceptionWith(otherPlayer);
+			otherPlayer.AddCollisionExceptionWith(this);
+		}
+
 		sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
 		GetNode<Camera2D>("Camera2D").Enabled = IsMultiplayerAuthority();
 

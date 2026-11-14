@@ -3,6 +3,8 @@ extends Node
 signal server_started
 signal peer_activity(peer_id: int, joined: bool)
 signal room_created(room_code: String)
+signal room_found(room_code: String, host_ip: String)
+signal room_search_completed(room_count: int)
 
 const PORT: int = 7777
 const DISCOVERY_PORT: int = 7778
@@ -30,7 +32,10 @@ func _process(_delta: float) -> void:
 		var request: String = _discovery_peer.get_packet().get_string_from_utf8()
 		var sender_ip: String = _discovery_peer.get_packet_ip()
 		var sender_port: int = _discovery_peer.get_packet_port()
-		if request != DISCOVERY_REQUEST_PREFIX + _room_code:
+		if (
+			request != DISCOVERY_REQUEST_PREFIX + _room_code
+			and request != DISCOVERY_REQUEST_PREFIX + "*"
+		):
 			continue
 
 		_discovery_peer.set_dest_address(sender_ip, sender_port)
@@ -107,41 +112,74 @@ func start_client_by_room_code(room_code: String) -> void:
 		push_error("Digite um código de sala válido com 6 dígitos.")
 		return
 
+	var rooms: Array[Dictionary] = await _query_rooms(requested_code)
+	if rooms.is_empty():
+		push_error("A sala %s não foi encontrada na rede local." % requested_code)
+		return
+
+	start_client(rooms[0]["host_ip"])
+
+func discover_rooms() -> void:
+	if peer != null:
+		push_warning("Desconecte-se antes de procurar salas.")
+		return
+
+	var rooms: Array[Dictionary] = await _query_rooms("")
+	for room in rooms:
+		room_found.emit(room["room_code"], room["host_ip"])
+	room_search_completed.emit(rooms.size())
+
+func _query_rooms(room_code_filter: String) -> Array[Dictionary]:
 	var search_peer := PacketPeerUDP.new()
 	var error := search_peer.bind(0, "0.0.0.0")
 	if error != OK:
 		push_error("Não foi possível iniciar a busca por salas: %s" % error_string(error))
-		return
+		return []
 
 	search_peer.set_broadcast_enabled(true)
 	error = search_peer.set_dest_address(DISCOVERY_ADDRESS, DISCOVERY_PORT)
 	if error != OK:
 		search_peer.close()
 		push_error("Não foi possível enviar a busca pela rede local: %s" % error_string(error))
-		return
+		return []
 
-	var request := DISCOVERY_REQUEST_PREFIX + requested_code
+	var request_code := room_code_filter if not room_code_filter.is_empty() else "*"
+	var request := DISCOVERY_REQUEST_PREFIX + request_code
 	error = search_peer.put_packet(request.to_utf8_buffer())
 	if error != OK:
 		search_peer.close()
 		push_error("Não foi possível enviar a busca pela sala: %s" % error_string(error))
-		return
+		return []
 
+	var rooms: Array[Dictionary] = []
+	var seen_rooms: Dictionary = {}
 	var time_left := ROOM_SEARCH_TIMEOUT
 	while time_left > 0.0:
 		while search_peer.get_available_packet_count() > 0:
 			var response: String = search_peer.get_packet().get_string_from_utf8()
 			var host_ip: String = search_peer.get_packet_ip()
-			if response == DISCOVERY_RESPONSE_PREFIX + requested_code:
-				search_peer.close()
-				start_client(host_ip)
-				return
+			if not response.begins_with(DISCOVERY_RESPONSE_PREFIX):
+				continue
+
+			var found_code := response.trim_prefix(DISCOVERY_RESPONSE_PREFIX)
+			if not _is_valid_room_code(found_code):
+				continue
+			if not room_code_filter.is_empty() and found_code != room_code_filter:
+				continue
+
+			var room_key := "%s|%s" % [found_code, host_ip]
+			if not seen_rooms.has(room_key):
+				seen_rooms[room_key] = true
+				rooms.append({
+					"room_code": found_code,
+					"host_ip": host_ip
+				})
 
 		await get_tree().create_timer(0.1).timeout
 		time_left -= 0.1
 
 	search_peer.close()
-	push_error("A sala %s não foi encontrada na rede local." % requested_code)
+	return rooms
 
 func _is_valid_room_code(room_code: String) -> bool:
 	return (
