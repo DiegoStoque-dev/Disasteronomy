@@ -1,0 +1,54 @@
+[gd_scene format=3 uid="uid://bhx58cq6q0ph3"]
+
+[ext_resource type="Script" uid="uid://dffv2w3iafu35" path="res://Scripts/high_level_ui.gd" id="1_q0ldm"]
+[ext_resource type="Script" uid="uid://ce82c6twd42dp" path="res://Scripts/VoiceChat.cs" id="2_eumxw"]
+[ext_resource type="Script" path="res://Scripts/high_level_multiplayer-spawner.gd" id="3_xd7pa"]
+[ext_resource type="PackedScene" path="res://Scenes/Player.tscn" id="4_nok2a"]
+
+[sub_resource type="AudioStreamMicrophone" id="AudioStreamMicrophone_j3pel"]
+
+[node name="Multiplayer" type="Control" unique_id=870880779]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_q0ldm")
+
+[node name="VoiceChat" type="Node" parent="." unique_id=604433106]
+script = ExtResource("2_eumxw")
+
+[node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath(".")
+script = ExtResource("3_xd7pa")
+network_player = ExtResource("4_nok2a")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=153316616]
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer" unique_id=949503320]
+offset_right = 194.0
+offset_bottom = 136.0
+
+[node name="Server" type="Button" parent="CanvasLayer/VBoxContainer" unique_id=1208468996]
+layout_mode = 2
+text = "Criar sala"
+
+[node name="RoomCode" type="LineEdit" parent="CanvasLayer/VBoxContainer" unique_id=1605876053]
+layout_mode = 2
+placeholder_text = "Código (vazio gera um)"
+
+[node name="Client" type="Button" parent="CanvasLayer/VBoxContainer" unique_id=1737931754]
+layout_mode = 2
+text = "Entrar na sala"
+
+[node name="VoiceIndicator" type="Button" parent="CanvasLayer/VBoxContainer" unique_id=2058704355]
+layout_mode = 2
+text = "Microfone Desligado"
+
+[node name="Microphone" type="AudioStreamPlayer" parent="." unique_id=2001754299]
+stream = SubResource("AudioStreamMicrophone_j3pel")
+volume_db = 24.0
+
+[connection signal="pressed" from="CanvasLayer/VBoxContainer/Server" to="." method="_on_server_pressed"]
+[connection signal="pressed" from="CanvasLayer/VBoxContainer/Client" to="." method="_on_client_pressed"]

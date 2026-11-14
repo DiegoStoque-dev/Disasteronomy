@@ -1,0 +1,287 @@
+
+using Godot;
+using System.Collections.Generic;
+
+public partial class VoiceChat : Node
+{
+	private double debugTimer = 0;
+	private AudioStreamPlayer microphonePlayer;
+	private AudioEffectCapture capture;
+	private Button voiceIndicator;
+
+	private const int FramesPerPacket = 480;
+
+	private bool microphoneEnabled = false;
+
+	private Dictionary<long, AudioStreamPlayer> remotePlayers = new();
+	private Dictionary<long, AudioStreamGeneratorPlayback> remotePlaybacks = new();
+
+	public override void _Ready()
+	{
+		GD.Print("VOICE CHAT INICIADO!");
+
+		voiceIndicator = GetNodeOrNull<Button>(
+			"../CanvasLayer/VBoxContainer/VoiceIndicator"
+		);
+		microphonePlayer = GetNodeOrNull<AudioStreamPlayer>("../Microphone");
+
+		if (voiceIndicator == null)
+		{
+			GD.PrintErr("VoiceIndicator não encontrado!");
+			SetProcess(false);
+			return;
+		}
+
+		if (microphonePlayer == null)
+		{
+			GD.PrintErr("Nó Microphone não encontrado.");
+			SetProcess(false);
+			return;
+		}
+
+		microphonePlayer.Bus = "Microphone";
+
+		voiceIndicator.MouseFilter = Control.MouseFilterEnum.Ignore;
+		voiceIndicator.FocusMode = Control.FocusModeEnum.None;
+		voiceIndicator.Text = "Microfone desligado";
+		voiceIndicator.Modulate = Colors.Gray;
+
+		// Procura o barramento do microfone
+		int busIndex = AudioServer.GetBusIndex("Microphone");
+
+		if (busIndex == -1)
+		{
+			GD.PrintErr("Barramento Microphone não encontrado!");
+			SetProcess(false);
+			return;
+		}
+
+		// Procura o AudioEffectCapture
+		for (int i = 0; i < AudioServer.GetBusEffectCount(busIndex); i++)
+		{
+			AudioEffect effect = AudioServer.GetBusEffect(busIndex, i);
+
+			if (effect is AudioEffectCapture audioCapture)
+			{
+				capture = audioCapture;
+				break;
+			}
+		}
+
+		if (capture == null)
+		{
+			GD.PrintErr("AudioEffectCapture não encontrado!");
+			SetProcess(false);
+			return;
+		}
+
+		GD.Print("Sistema de voz preparado!");
+	}
+
+	public override void _Process(double delta)
+	{
+		bool pressed = Input.IsActionPressed("voice_chat");
+
+		// Ativa o microfone
+		if (pressed && !microphoneEnabled)
+		{
+			microphoneEnabled = true;
+			microphonePlayer.Play();
+
+			voiceIndicator.Text = "Falando...";
+			voiceIndicator.Modulate = Colors.LimeGreen;
+
+			GD.Print("Microfone ativado!");
+		}
+
+		// Desativa o microfone
+		else if (!pressed && microphoneEnabled)
+		{
+			microphoneEnabled = false;
+			microphonePlayer.Stop();
+
+			voiceIndicator.Text = "Microfone desligado";
+			voiceIndicator.Modulate = Colors.Gray;
+
+			GD.Print("Microfone desativado!");
+		}
+
+		if (!microphoneEnabled || capture == null)
+			return;
+
+		if (Multiplayer.MultiplayerPeer == null)
+			return;
+
+		// Captura os quadros de áudio
+		int available = capture.GetFramesAvailable();
+		debugTimer += delta;
+
+if (debugTimer >= 1.0)
+{
+	GD.Print("Quadros disponíveis: ", available);
+	debugTimer = 0;
+}
+		if (available >= FramesPerPacket)
+		{
+			Vector2[] samples = capture.GetBuffer(FramesPerPacket);
+
+			byte[] packet = EncodeAudio(samples);
+
+			// Host envia sua própria voz
+			if (Multiplayer.IsServer())
+			{
+				BroadcastVoice(Multiplayer.GetUniqueId(), packet);
+			}
+			// Cliente envia ao host
+			else if (
+				Multiplayer.MultiplayerPeer
+					.GetConnectionStatus()
+				== MultiplayerPeer.ConnectionStatus.Connected
+			)
+			{
+				RpcId(1, nameof(ReceiveVoice), packet);
+			}
+		}
+	}
+
+	// Converte áudio para mono de 16 bits
+	private byte[] EncodeAudio(Vector2[] samples)
+	{
+		byte[] packet = new byte[samples.Length * 2];
+
+		for (int i = 0; i < samples.Length; i++)
+		{
+			float mono = (samples[i].X + samples[i].Y) / 2f;
+
+			mono = Mathf.Clamp(mono, -1f, 1f);
+
+			short value = (short)(mono * 32767);
+
+			packet[i * 2] = (byte)(value & 0xFF);
+			packet[i * 2 + 1] = (byte)((value >> 8) & 0xFF);
+		}
+
+		return packet;
+	}
+
+	// Recebe áudio enviado pelos clientes
+	[Rpc(
+		MultiplayerApi.RpcMode.AnyPeer,
+		CallLocal = false,
+		TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable,
+		TransferChannel = 1
+	)]
+	public void ReceiveVoice(byte[] packet)
+	{
+		if (!Multiplayer.IsServer())
+			return;
+
+		if (packet == null || packet.Length == 0 ||
+			packet.Length > 1200 || packet.Length % 2 != 0)
+			return;
+
+		long senderId = Multiplayer.GetRemoteSenderId();
+
+		BroadcastVoice(senderId, packet);
+	}
+
+	// Encaminha a voz aos outros jogadores
+	private void BroadcastVoice(long senderId, byte[] packet)
+	{
+		// O host reproduz a voz recebida dos clientes
+		if (senderId != Multiplayer.GetUniqueId())
+		{
+			PlayRemoteVoice(senderId, packet);
+		}
+
+		foreach (int peerId in Multiplayer.GetPeers())
+		{
+			if (peerId == senderId)
+				continue;
+
+			RpcId(
+				peerId,
+				nameof(PlayRemoteVoice),
+				senderId,
+				packet
+			);
+		}
+	}
+
+	// Recebe e reproduz a voz de outro jogador
+	[Rpc(
+		MultiplayerApi.RpcMode.Authority,
+		CallLocal = false,
+		TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable,
+		TransferChannel = 1
+	)]
+	public void PlayRemoteVoice(long senderId, byte[] packet)
+	{
+		if (packet == null || packet.Length == 0 ||
+			packet.Length % 2 != 0 || packet.Length > 1200)
+			return;
+
+		if (!remotePlaybacks.TryGetValue(
+			senderId,
+			out AudioStreamGeneratorPlayback playback))
+		{
+			playback = CreateRemotePlayer(senderId);
+		}
+
+		if (playback == null)
+			return;
+
+		int frameCount = packet.Length / 2;
+
+		Vector2[] frames = new Vector2[frameCount];
+
+		for (int i = 0; i < frameCount; i++)
+		{
+			short sample = unchecked((short)(
+				packet[i * 2] |
+				(packet[i * 2 + 1] << 8)
+			));
+
+			float value = sample / 32768f;
+
+			frames[i] = new Vector2(value, value);
+		}
+
+		if (playback.CanPushBuffer(frameCount))
+		{
+			playback.PushBuffer(frames);
+		}
+	}
+
+	// Cria um reprodutor para cada jogador
+	private AudioStreamGeneratorPlayback CreateRemotePlayer(long peerId)
+	{
+		AudioStreamGenerator generator = new AudioStreamGenerator();
+
+		generator.MixRate = AudioServer.GetMixRate();
+		generator.BufferLength = 0.2f;
+
+		AudioStreamPlayer player = new AudioStreamPlayer();
+
+		player.Name = $"Voice_{peerId}";
+		player.Stream = generator;
+
+		AddChild(player);
+
+		player.Play();
+
+		AudioStreamGeneratorPlayback playback =
+			player.GetStreamPlayback() as AudioStreamGeneratorPlayback;
+
+		if (playback == null)
+		{
+			player.QueueFree();
+			return null;
+		}
+
+		remotePlayers[peerId] = player;
+		remotePlaybacks[peerId] = playback;
+
+		return playback;
+	}
+}
