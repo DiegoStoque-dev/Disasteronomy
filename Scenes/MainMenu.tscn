@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://d1q8p8cfr6pf1"]
+
+[ext_resource type="Texture2D" uid="uid://rsm36ng2bnhb" path="res://Sprites/UI/MainMenu/cinsa.png" id="1_tt5f1"]
+
+[node name="MainMenu" type="Node2D" unique_id=193100804]
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=126745977]
+offset_left = -41.0
+offset_top = -30.0
+offset_right = 1205.0
+offset_bottom = 692.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=688368863]
+offset_right = 738.0
+offset_bottom = 650.0
+
+[node name="TextureButton" type="TextureButton" parent="VBoxContainer" unique_id=957137858]
+texture_filter = 1
+layout_mode = 2
+offset_transform_enabled = true
+texture_normal = ExtResource("1_tt5f1")
