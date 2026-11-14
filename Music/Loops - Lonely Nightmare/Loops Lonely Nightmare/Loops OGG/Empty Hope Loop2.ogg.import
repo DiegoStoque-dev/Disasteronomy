@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://bw4qjvvkw5jx4"
+path="res://.godot/imported/Empty Hope Loop2.ogg-4b71d626fde24a395c97f7e8797f74ff.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops OGG/Empty Hope Loop2.ogg"
+dest_files=["res://.godot/imported/Empty Hope Loop2.ogg-4b71d626fde24a395c97f7e8797f74ff.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

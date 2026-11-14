@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://clyy2id6f3pil"
+path="res://.godot/imported/Saved Notes.ogg-00dac8fa1e5e368ad0dda8e19dd972ba.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/OGG/Saved Notes.ogg"
+dest_files=["res://.godot/imported/Saved Notes.ogg-00dac8fa1e5e368ad0dda8e19dd972ba.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

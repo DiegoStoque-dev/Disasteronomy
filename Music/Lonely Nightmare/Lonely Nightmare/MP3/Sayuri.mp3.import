@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://hdu4siccxyb4"
+path="res://.godot/imported/Sayuri.mp3-5e6c4b7cd6dd448157fba2d9d3012adc.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/Sayuri.mp3"
+dest_files=["res://.godot/imported/Sayuri.mp3-5e6c4b7cd6dd448157fba2d9d3012adc.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

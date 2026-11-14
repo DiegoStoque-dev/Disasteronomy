@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://dad433qalejik"
+path="res://.godot/imported/Six_Loop.wav-7c1cf95cf7eb8828c6e9fc0a3758fc70.sample"
+
+[deps]
+
+source_file="res://Music/Post-Dream_Ambient/Post-Dream Ambient/Loops/Six_Loop.wav"
+dest_files=["res://.godot/imported/Six_Loop.wav-7c1cf95cf7eb8828c6e9fc0a3758fc70.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

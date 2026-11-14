@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bano1jer5ir7n"
+path="res://.godot/imported/Tempest Loop1.wav-9f349b17ff36acf68cc928e9035405bc.sample"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops WAVs/Tempest Loop1.wav"
+dest_files=["res://.godot/imported/Tempest Loop1.wav-9f349b17ff36acf68cc928e9035405bc.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

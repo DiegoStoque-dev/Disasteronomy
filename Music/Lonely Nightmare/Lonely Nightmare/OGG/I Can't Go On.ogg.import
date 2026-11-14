@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://c3ipfi8ty1b4c"
+path="res://.godot/imported/I Can't Go On.ogg-12939fbf542d28a4eecd0dbc476beaaf.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/OGG/I Can't Go On.ogg"
+dest_files=["res://.godot/imported/I Can't Go On.ogg-12939fbf542d28a4eecd0dbc476beaaf.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

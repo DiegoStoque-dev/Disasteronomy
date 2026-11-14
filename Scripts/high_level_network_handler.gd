@@ -5,24 +5,31 @@ signal peer_activity(peer_id: int, joined: bool)
 signal room_created(room_code: String)
 signal room_found(room_code: String, host_ip: String)
 signal room_search_completed(room_count: int)
+signal player_nickname_changed(peer_id: int, nickname: String)
 
 const PORT: int = 7777
 const DISCOVERY_PORT: int = 7778
 const DISCOVERY_ADDRESS: String = "255.255.255.255"
 const ROOM_CODE_LENGTH: int = 6
 const ROOM_SEARCH_TIMEOUT: float = 3.0
+const MAX_NICKNAME_LENGTH: int = 16
+const PROFILE_PATH: String = "user://player_profile.cfg"
 const DISCOVERY_REQUEST_PREFIX: String = "DISASTERONOMY_DISCOVER|"
 const DISCOVERY_RESPONSE_PREFIX: String = "DISASTERONOMY_ROOM|"
 
 var peer: ENetMultiplayerPeer
 var _discovery_peer: PacketPeerUDP
 var _room_code: String = ""
+var local_nickname: String = "Jogador"
+var _player_nicknames: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	_rng.randomize()
+	_load_local_nickname()
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	multiplayer.connected_to_server.connect(_on_connected_to_server)
 
 func _process(_delta: float) -> void:
 	if _discovery_peer == null:
@@ -73,20 +80,105 @@ func start_server(room_code: String = "") -> void:
 	_discovery_peer = discovery
 	peer = new_peer
 	multiplayer.multiplayer_peer = peer
+	_player_nicknames.clear()
+	_sync_player_nickname.rpc(multiplayer.get_unique_id(), local_nickname)
 	server_started.emit()
 	room_created.emit(_room_code)
 
 func _on_peer_connected(peer_id: int) -> void:
-	if multiplayer.is_server():
-		_broadcast_peer_activity.rpc(peer_id, true)
+	if not multiplayer.is_server():
+		return
+
+	for existing_peer_id in _player_nicknames:
+		_sync_player_nickname.rpc_id(
+			peer_id,
+			existing_peer_id,
+			_player_nicknames[existing_peer_id]
+		)
+
+	_broadcast_peer_activity.rpc(peer_id, true)
 
 func _on_peer_disconnected(peer_id: int) -> void:
-	if multiplayer.is_server():
-		_broadcast_peer_activity.rpc(peer_id, false)
+	if not multiplayer.is_server():
+		return
+
+	_sync_player_nickname.rpc(peer_id, "")
+	_broadcast_peer_activity.rpc(peer_id, false)
+
+func _on_connected_to_server() -> void:
+	_submit_player_nickname.rpc_id(1, local_nickname)
 
 @rpc("authority", "call_local", "reliable")
 func _broadcast_peer_activity(peer_id: int, joined: bool) -> void:
 	peer_activity.emit(peer_id, joined)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _submit_player_nickname(nickname: String) -> void:
+	if not multiplayer.is_server():
+		return
+
+	var clean_nickname := _sanitize_nickname(nickname)
+	if clean_nickname.is_empty():
+		push_warning("Um cliente enviou um apelido vazio ou inválido.")
+		return
+
+	_sync_player_nickname.rpc(multiplayer.get_remote_sender_id(), clean_nickname)
+
+@rpc("authority", "call_local", "reliable")
+func _sync_player_nickname(peer_id: int, nickname: String) -> void:
+	if nickname.is_empty():
+		_player_nicknames.erase(peer_id)
+	else:
+		_player_nicknames[peer_id] = nickname
+
+	player_nickname_changed.emit(peer_id, nickname)
+
+func get_player_nickname(peer_id: int) -> String:
+	return str(_player_nicknames.get(peer_id, ""))
+
+func set_local_nickname(nickname: String) -> bool:
+	var clean_nickname := _sanitize_nickname(nickname)
+	if clean_nickname.is_empty():
+		push_error("O apelido deve ter entre 1 e %d caracteres." % MAX_NICKNAME_LENGTH)
+		return false
+
+	var config := ConfigFile.new()
+	var load_error := config.load(PROFILE_PATH)
+	if load_error != OK and load_error != ERR_FILE_NOT_FOUND:
+		push_error("Não foi possível carregar o perfil local: %s" % error_string(load_error))
+		return false
+
+	config.set_value("profile", "nickname", clean_nickname)
+	var save_error := config.save(PROFILE_PATH)
+	if save_error != OK:
+		push_error("Não foi possível salvar o apelido local: %s" % error_string(save_error))
+		return false
+
+	local_nickname = clean_nickname
+	if peer != null and multiplayer.is_server():
+		_sync_player_nickname.rpc(multiplayer.get_unique_id(), local_nickname)
+	return true
+
+func _load_local_nickname() -> void:
+	var config := ConfigFile.new()
+	var error := config.load(PROFILE_PATH)
+	if error == ERR_FILE_NOT_FOUND:
+		return
+	if error != OK:
+		push_error("Não foi possível carregar o perfil local: %s" % error_string(error))
+		return
+
+	var saved_nickname: Variant = config.get_value("profile", "nickname", local_nickname)
+	if saved_nickname is String:
+		var clean_nickname := _sanitize_nickname(saved_nickname)
+		if not clean_nickname.is_empty():
+			local_nickname = clean_nickname
+
+func _sanitize_nickname(nickname: String) -> String:
+	var clean_nickname := nickname.strip_edges()
+	if clean_nickname.length() > MAX_NICKNAME_LENGTH:
+		clean_nickname = clean_nickname.substr(0, MAX_NICKNAME_LENGTH)
+	return clean_nickname
 
 func start_client(ip_address: String) -> void:
 	if peer != null:

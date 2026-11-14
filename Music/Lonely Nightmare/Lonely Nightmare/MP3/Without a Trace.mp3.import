@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://c5mvwcm3op054"
+path="res://.godot/imported/Without a Trace.mp3-101bafdc820374384e8321a580673788.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/Without a Trace.mp3"
+dest_files=["res://.godot/imported/Without a Trace.mp3-101bafdc820374384e8321a580673788.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

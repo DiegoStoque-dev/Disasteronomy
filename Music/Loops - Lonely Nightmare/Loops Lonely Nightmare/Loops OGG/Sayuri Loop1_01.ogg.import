@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://nt8rxgce7sp5"
+path="res://.godot/imported/Sayuri Loop1_01.ogg-a5e31bf56e54b8a8fb1be6ca53070e2d.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops OGG/Sayuri Loop1_01.ogg"
+dest_files=["res://.godot/imported/Sayuri Loop1_01.ogg-a5e31bf56e54b8a8fb1be6ca53070e2d.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

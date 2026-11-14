@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://lpr7wxmm7ujs"
+path="res://.godot/imported/Ceiling Stars Loop3.wav-2ceb9b9a3f28453c8a8ca064ff20e535.sample"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops WAVs/Ceiling Stars Loop3.wav"
+dest_files=["res://.godot/imported/Ceiling Stars Loop3.wav-2ceb9b9a3f28453c8a8ca064ff20e535.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

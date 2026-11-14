@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://rq5pantbto4a"
+path="res://.godot/imported/one.wav-81935ed53cf487df5f6185251b9d68b8.sample"
+
+[deps]
+
+source_file="res://Music/Post-Dream_Ambient/Post-Dream Ambient/WAV/one.wav"
+dest_files=["res://.godot/imported/one.wav-81935ed53cf487df5f6185251b9d68b8.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

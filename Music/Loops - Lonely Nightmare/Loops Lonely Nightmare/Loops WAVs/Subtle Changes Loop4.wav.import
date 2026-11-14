@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://cm0w5fem60cl7"
+path="res://.godot/imported/Subtle Changes Loop4.wav-159e745a1d59e52de1887a8dcb03f2a2.sample"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops WAVs/Subtle Changes Loop4.wav"
+dest_files=["res://.godot/imported/Subtle Changes Loop4.wav-159e745a1d59e52de1887a8dcb03f2a2.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

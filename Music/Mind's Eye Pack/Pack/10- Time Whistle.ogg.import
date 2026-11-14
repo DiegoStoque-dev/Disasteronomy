@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://dgvdu5flscx8v"
+path="res://.godot/imported/10- Time Whistle.ogg-471eff0e6ab13af0327344ebca8f56ca.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Mind's Eye Pack/Pack/10- Time Whistle.ogg"
+dest_files=["res://.godot/imported/10- Time Whistle.ogg-471eff0e6ab13af0327344ebca8f56ca.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

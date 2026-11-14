@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://bm5afk2ibbh0u"
+path="res://.godot/imported/Subtle Changes Loop1.ogg-cb9bfea8596071fedb32e61299b5017e.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops OGG/Subtle Changes Loop1.ogg"
+dest_files=["res://.godot/imported/Subtle Changes Loop1.ogg-cb9bfea8596071fedb32e61299b5017e.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://cyww5mgfjbf2y"
+path="res://.godot/imported/2 The Veil of Night Loop 2 v2.wav-74fe7862eb0f1d6489086f485ccf669e.sample"
+
+[deps]
+
+source_file="res://Music/Mind's Eye Loops v1/Mind's Eye Loops v1/6 The Veil of Night/2 The Veil of Night Loop 2 v2.wav"
+dest_files=["res://.godot/imported/2 The Veil of Night Loop 2 v2.wav-74fe7862eb0f1d6489086f485ccf669e.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

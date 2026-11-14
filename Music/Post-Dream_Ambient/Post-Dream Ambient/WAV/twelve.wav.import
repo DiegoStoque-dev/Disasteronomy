@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bppxyddewuthm"
+path="res://.godot/imported/twelve.wav-2decaa2f237b4a5c9b517e04eb43e53b.sample"
+
+[deps]
+
+source_file="res://Music/Post-Dream_Ambient/Post-Dream Ambient/WAV/twelve.wav"
+dest_files=["res://.godot/imported/twelve.wav-2decaa2f237b4a5c9b517e04eb43e53b.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

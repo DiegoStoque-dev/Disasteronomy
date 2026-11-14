@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://clk1y0wtfn5qg"
+path="res://.godot/imported/eleven.mp3-4cf41abb4c08a5266375b0f3295681df.mp3str"
+
+[deps]
+
+source_file="res://Music/Post-Dream_Ambient/Post-Dream Ambient/MP3/eleven.mp3"
+dest_files=["res://.godot/imported/eleven.mp3-4cf41abb4c08a5266375b0f3295681df.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

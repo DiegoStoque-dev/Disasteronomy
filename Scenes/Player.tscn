@@ -9,6 +9,7 @@
 [ext_resource type="Texture2D" uid="uid://dxuxkvvmwxg0o" path="res://Sprites/The Female Adventurer - Free/The Female Adventurer - Free/Walk/walk_Left_Down.png" id="7_r3kul"]
 [ext_resource type="Texture2D" uid="uid://dmva5cgca5tpl" path="res://Sprites/The Female Adventurer - Free/The Female Adventurer - Free/Walk/walk_Right_Down.png" id="8_jatw7"]
 [ext_resource type="Texture2D" uid="uid://b0u3lvk3felvj" path="res://Sprites/The Female Adventurer - Free/The Female Adventurer - Free/Walk/walk_Up.png" id="9_rv870"]
+[ext_resource type="FontFile" uid="uid://c83si656dex5r" path="res://Fontes/Boiled Pasta.ttf" id="10_yoq75"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_c2a8f"]
 size = Vector2(12, 13)
@@ -529,6 +530,17 @@ animation = &"walk_up"
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1186331334]
 offset = Vector2(5, 5)
+
+[node name="NicknameLabel" type="Label" parent="." unique_id=1124856840]
+z_index = 1
+offset_left = -6.25
+offset_top = -15.75
+offset_right = 56.75
+offset_bottom = 7.25
+scale = Vector2(0.20999984, 0.2)
+theme_override_fonts/font = ExtResource("10_yoq75")
+text = "Jogador"
+horizontal_alignment = 1
 
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="." unique_id=374612967]
 replication_config = SubResource("SceneReplicationConfig_t3ikl")

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cckx5i5ejftgj"
+path="res://.godot/imported/Comfort.mp3-34229290f2405e0f06be91a51cdebf76.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/Comfort.mp3"
+dest_files=["res://.godot/imported/Comfort.mp3-34229290f2405e0f06be91a51cdebf76.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

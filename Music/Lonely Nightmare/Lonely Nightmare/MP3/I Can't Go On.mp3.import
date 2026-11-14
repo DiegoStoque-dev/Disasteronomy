@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dxo0u2mvs7ulm"
+path="res://.godot/imported/I Can't Go On.mp3-410606849bc4eca9aaf0073a86958ca8.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/I Can't Go On.mp3"
+dest_files=["res://.godot/imported/I Can't Go On.mp3-410606849bc4eca9aaf0073a86958ca8.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

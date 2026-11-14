@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://co0773wxqf5vh"
+path="res://.godot/imported/Lying Down Loop1.ogg-c5cd90c2ec3a21476f60d5568168de25.oggvorbisstr"
+
+[deps]
+
+source_file="res://Music/Loops - Lonely Nightmare/Loops Lonely Nightmare/Loops OGG/Lying Down Loop1.ogg"
+dest_files=["res://.godot/imported/Lying Down Loop1.ogg-c5cd90c2ec3a21476f60d5568168de25.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

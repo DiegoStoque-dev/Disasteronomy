@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cud6w6noa16pc"
+path="res://.godot/imported/Lost in Polaroids.mp3-01822560cfe5290946f42ae5c5539d58.mp3str"
+
+[deps]
+
+source_file="res://Music/Lonely Nightmare/Lonely Nightmare/MP3/Lost in Polaroids.mp3"
+dest_files=["res://.godot/imported/Lost in Polaroids.mp3-01822560cfe5290946f42ae5c5539d58.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
