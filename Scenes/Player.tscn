@@ -534,9 +534,9 @@ offset = Vector2(5, 5)
 [node name="NicknameLabel" type="Label" parent="." unique_id=1124856840]
 z_index = 1
 offset_left = -6.25
-offset_top = -15.75
+offset_top = -16.75
 offset_right = 56.75
-offset_bottom = 7.25
+offset_bottom = 6.25
 scale = Vector2(0.20999984, 0.2)
 theme_override_fonts/font = ExtResource("10_yoq75")
 text = "Jogador"
