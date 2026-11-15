@@ -197,9 +197,9 @@ public partial class ShipHud : CanvasLayer
         _panel.AnchorRight = 0f;
         _panel.AnchorTop = 1f;
         _panel.AnchorBottom = 1f;
-        _panel.OffsetLeft = 10f;
-        _panel.OffsetRight = 332f;
-        _panel.OffsetTop = -170f;
+        _panel.OffsetLeft = 8f;
+        _panel.OffsetRight = 302f;
+        _panel.OffsetTop = -148f;
         _panel.OffsetBottom = -10f;
 
         var box = new VBoxContainer();
@@ -214,8 +214,8 @@ public partial class ShipHud : CanvasLayer
             FitContent = false,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        _log.AddThemeFontSizeOverride("normal_font_size", 14);
-        _log.CustomMinimumSize = new Vector2(0, 100f);
+        _log.AddThemeFontSizeOverride("normal_font_size", 13);
+        _log.CustomMinimumSize = new Vector2(0, 82f);
         box.AddChild(_log);
 
         var inputRow = new HBoxContainer();

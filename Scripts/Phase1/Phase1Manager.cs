@@ -1,24 +1,75 @@
 using Godot;
-using System;
 using System.Collections.Generic;
 
+/// <summary>
+/// Level 1 manager - the EXTERIOR of the spaceship, zero gravity, grip-to-grip
+/// movement with the SAFER + rope, a loose pistol tool to fetch, and a mandatory
+/// return to the ship. Replaces the old interior Phase 1 rail level.
+///
+/// The ship is drawn by a Sprite2D (ShipTexturePath, fallback rectangle if the file
+/// is missing). Every layout position below (grips, tool, CPS) is written in the
+/// IMAGE's own pixel space (origin = top-left of the image) and converted to world
+/// space by <see cref="ImageToWorld"/> so reading coordinates from an image editor
+/// works and changing ShipScale never breaks the layout.
+/// </summary>
 public partial class Phase1Manager : Node2D
 {
-	public enum PhaseState { Airlock, Transit, CpsArrival, Minigame, Completed, Failed }
+	public enum PhaseState { Start, Transit, CpsArrival, Minigame, Return, Completed, Failed }
 
-	/// <summary>Hull edges used by the tether corner wrap (world space, one per structural segment).</summary>
-	public static readonly System.Collections.Generic.List<(Vector2 A, Vector2 B)> TetherHullSegments = new();
+	// ------------------------------------------------------------------
+	// SHIP / CAMERA
+	// ------------------------------------------------------------------
+	[Export] public string ShipTexturePath = "res://Sprites/ship_exterior.png";
+	[Export] public float ShipScale = 1f;
+	[Export] public float CameraZoom = 1f;
+	[Export] public float BoundsMargin = 40f;      // extra space around the image for bounds / camera limits.
+	[Export] public float FadeInDuration = 1.5f;   // slow fade from black at level start.
 
-	[Export] public Rect2 LevelBounds = new Rect2(-600, -450, 2200, 1300);
-	[Export] public Vector2 AirlockPosition = new Vector2(-400, 0);
-	[Export] public Vector2 CpsPosition = new Vector2(1400, 0);
-	[Export] public float CpsInteractRadius = 130f;
-	[Export] public float CpsInteractSpeedMax = 40f;
+	// ------------------------------------------------------------------
+	// PISTOL TOOL
+	// ------------------------------------------------------------------
+	[Export] public string ToolTexturePath = "res://Sprites/pistol_tool.png";
+	[Export] public Vector2 ToolImagePos = new Vector2(760, 760); // image pixels.
+	[Export] public float PickupRadius = 40f;
+
+	// ------------------------------------------------------------------
+	// CPS
+	// ------------------------------------------------------------------
+	[Export] public Vector2 CpsImagePos = new Vector2(624, 344); // image pixels.
+
 	[Export] public float MissionTime = 0f;
 	[Export] public string NextScenePath = "res://Scenes/Phase2/Phase2.tscn";
 
-	private PhaseState state = PhaseState.Airlock;
-	private Dictionary<int, bool> playerCompleted = new();
+	// ==================================================================
+	// LEVEL 1 LAYOUT (all positions in IMAGE pixels; origin = top-left).
+	// Read these from an image editor and paste with the F2 Shift+click tool.
+	// Each GripDef is one discrete handhold; flags mark its role.
+	// ==================================================================
+	private class GripDef
+	{
+		public Vector2 Pos;
+		public bool IsStart;
+		public bool IsAirlock;
+		public bool IsCps;
+	}
+
+	private readonly List<GripDef> GripDefs = new()
+	{
+		new GripDef { Pos = new Vector2(300, 300), IsStart = true, IsAirlock = true }, // start + return (side of ship)
+		new GripDef { Pos = new Vector2(410, 300) },
+		new GripDef { Pos = new Vector2(520, 270) },
+		new GripDef { Pos = new Vector2(630, 300), IsCps = true },                     // next to the CPS
+		new GripDef { Pos = new Vector2(742, 332) },
+		new GripDef { Pos = new Vector2(852, 360) },
+	};
+
+	private const float TetherValidationMargin = 40f;
+
+	// ------------------------------------------------------------------
+	// Runtime state
+	// ------------------------------------------------------------------
+	private PhaseState state = PhaseState.Start;
+	private readonly Dictionary<int, bool> playerCompleted = new();
 	private bool localCompleted = false;
 	private string failureReason = "";
 
@@ -31,6 +82,7 @@ public partial class Phase1Manager : Node2D
 	private Label hudTimer;
 	private Label hudDebug;
 	private Label hudPrompt;
+	private Label hudTool;
 
 	private ColorRect screenOverlay;
 	private Label screenTitle;
@@ -45,16 +97,72 @@ public partial class Phase1Manager : Node2D
 	private EvaPlayer localPlayer;
 	private MissionSummary missionSummary;
 
-	/// <summary>True while the player must not control the astronaut (minigame open or phase over).</summary>
+	// Ship / layout runtime.
+	private Node2D shipNode;                  // holds the Sprite2D or fallback rect (centered at origin).
+	private Vector2 shipTextureSize = new Vector2(1600, 900); // unscaled image size.
+	private Rect2 levelBounds;
+	private readonly List<Grip> grips = new();
+	private Grip startGrip;
+	private Grip airlockGrip;
+	private Node toolNode;                    // the loose pistol tool.
+	private Vector2 toolWorldPos;
+
+	// Debug overlay (F2).
+	private bool debugActive = false;
+	private readonly List<Label> debugGripLabels = new();
+	private Label debugToolLabel;
+	private Label debugMouseLabel;
+
+	// Public accessors used by the player (EvaPlayer).
+	public bool DebugActive => debugActive;
+	public Grip StartGrip => startGrip;
+	public Vector2 CpsWorldPosition => ImageToWorld(CpsImagePos);
+
+	public bool IsNearTool(Vector2 pos) =>
+		toolNode != null && IsInstanceValid(toolNode) && toolWorldPos.DistanceTo(pos) <= PickupRadius;
+
+	/// <summary>True while the player must not control the astronaut (minigame open or level over).</summary>
 	public bool InputLocked =>
 		state == PhaseState.Completed ||
 		state == PhaseState.Failed ||
 		(cpsMinigame != null && cpsMinigame.IsOpen);
+// ------------------------------------------------------------------
+	// USER-FACING TEXTS
+	// ------------------------------------------------------------------
+	private const string Level1Controls =
+		"Hold LEFT mouse: reach for a grip and pull yourself to it (release mid-pull to return)\n" +
+		"Hold RIGHT mouse: reel back to your last grip (while floating)\n" +
+		"SPACE: SAFER jet (point at the cursor, you move the opposite way)\n" +
+		"E: pick up the pistol tool / start the CPS calibration\n" +
+		"P: pause";
 
-	private const string Phase1Controls = "W A S D: suit thrusters (offline while the tether is taut)  |  Hold left mouse: reach for a handrail\nA / D or W / S: slide along the rail  |  Space: SAFER (jet fires toward the cursor, you go the other way)\nE (when slow & close to the CPS): calibrate  |  P: pause  |  F9: debug teleport  |  Right mouse (SAFER empty): climb the tether";
-	private const string Phase1Briefing = "Two thermal actuators on the solar wings are frozen. Leave the Utility Tunnel in your EMU suit and follow the yellow handrails to the Cryogenic Propulsion Stage.\n\nStay clipped to the rails and keep your swings short: the tether breaks on the THIRD full stretch. When it snaps you only keep the short arm, so save the SAFER nitrogen jets for the big gaps - you have just a few charges.";
+	private const string Level1Briefing =
+		"Out in zero gravity with no floor, the only way to move is handhold to handhold and your SAFER jet.\n\n" +
+		"Hold LEFT mouse to extend your arm toward a yellow grip and pull yourself across. The tether is " +
+		"anchored to the last grip you held - hold RIGHT mouse to reel back so you never drift away.\n\n" +
+		"A NASA pistol tool floats near the base of the ship, out of arm's reach: use the SAFER (SPACE) to " +
+		"go fetch it, then climb grip to grip to the CPS in the middle of the hull. Press E while clipped to " +
+		"a CPS grip to calibrate. When it's done, return to the airlock grip to complete the level.";
 
-	public bool IsPlayerNearCps(Vector2 worldPos) => worldPos.DistanceTo(CpsPosition) <= CpsInteractRadius;
+	// ------------------------------------------------------------------
+	// Coordinate conversion (image pixels <-> world)
+	// ------------------------------------------------------------------
+
+	/// <summary>Image-pixel coordinate (origin = top-left of the image) to world space.</summary>
+	private Vector2 ImageToWorld(Vector2 imagePos)
+	{
+		Vector2 origin = (shipNode != null ? shipNode.GlobalPosition : Vector2.Zero)
+			- shipTextureSize * ShipScale * 0.5f;
+		return origin + imagePos * ShipScale;
+	}
+
+	/// <summary>World to image-pixel; used only by the debug overlay (F2).</summary>
+	public Vector2 WorldToImage(Vector2 worldPos)
+	{
+		Vector2 origin = (shipNode != null ? shipNode.GlobalPosition : Vector2.Zero)
+			- shipTextureSize * ShipScale * 0.5f;
+		return (worldPos - origin) / ShipScale;
+	}
 
 	public override void _Ready()
 	{
@@ -64,18 +172,18 @@ public partial class Phase1Manager : Node2D
 		SetupHud();
 		SetupScreens();
 		SetupMissionSummary();
+		SetupFadeIn();
+		SetupDecor();
 
 		FindLocalPlayer();
 		if (localPlayer == null && !Multiplayer.HasMultiplayerPeer())
 			SpawnSoloPlayer();
 
-		// Solo: always start next to the airlock (the player placed in the editor sits at 0,0).
+		// Solo: start attached on the IsStart grip with the camera framed on the ship.
 		if (localPlayer != null && !Multiplayer.HasMultiplayerPeer())
-			localPlayer.GlobalPosition = AirlockPosition + new Vector2(80f, 0f);
+			SetupPlayerStart(localPlayer);
 
-		// Multiplayer: hide the editor-instanced placeholder suit (it is not a real peer -
-		// the MultiplayerSpawner creates the actual players), and disable its camera so the
-		// host never ends up following / controlling an invisible ghost at the origin.
+		// Multiplayer: hide the editor-instanced placeholder suit and disable its camera.
 		if (Multiplayer.HasMultiplayerPeer())
 		{
 			foreach (Node child in GetChildren())
@@ -89,15 +197,13 @@ public partial class Phase1Manager : Node2D
 			}
 		}
 
-		// Host safety: the MultiplayerSpawner creates the server's own suit (peer 1) when
-		// the multiplayer session starts, but it needs a frame or two. Give it a moment,
-		// then guarantee the SERVER has a controllable player so the phase can finish in MP.
 		TryEnsureHostPlayer();
 
 		UpdateObjective();
-		PauseMenu.Attach(this, Phase1Controls);
-		BriefingScreen.Open(this, "PHASE 1 - VACUUM CALIBRATION", Phase1Briefing, Phase1Controls);
-		GD.Print("Phase1: level built");
+		ValidateLayout();
+		PauseMenu.Attach(this, Level1Controls);
+		BriefingScreen.Open(this, "LEVEL 1 - EXTERIOR", Level1Briefing, Level1Controls);
+		GD.Print("Level1: level built");
 	}
 
 	public override void _Process(double delta)
@@ -110,28 +216,52 @@ public partial class Phase1Manager : Node2D
 		if (localPlayer == null || !IsInstanceValid(localPlayer))
 			FindLocalPlayer();
 
+		UpdateGripHighlights();
 		UpdateProgressState();
+		CheckReturnCompletion();
 		UpdateHud();
+		if (debugActive)
+			UpdateDebugOverlay();
 	}
 
 	private void UpdateProgressState()
 	{
 		if (localPlayer == null) return;
-		if (state == PhaseState.Minigame) return;
+		if (state == PhaseState.Minigame || state == PhaseState.Completed || state == PhaseState.Failed) return;
 
 		PhaseState next;
-		if (IsPlayerNearCps(localPlayer.GlobalPosition))
+		if (localCompleted)
+			next = PhaseState.Return;                       // minigame done: go back to the airlock.
+		else if (localPlayer.HasTool && localPlayer.IsHoldingCpsGrip)
 			next = PhaseState.CpsArrival;
-		else if (localPlayer.GlobalPosition.DistanceTo(AirlockPosition) > 200f)
-			next = PhaseState.Transit;
 		else
-			next = PhaseState.Airlock;
+			next = PhaseState.Transit;
 
 		if (next != state)
 		{
 			state = next;
 			UpdateObjective();
 		}
+	}
+
+	/// <summary>Completes the level when the team returns to the airlock grip after the minigame.</summary>
+	private void CheckReturnCompletion()
+	{
+		if (localCompleted && state == PhaseState.Return
+			&& localPlayer != null && localPlayer.IsHoldingAirlockGrip)
+		{
+			CompleteLevel();
+		}
+	}
+
+	private void CompleteLevel()
+	{
+		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
+		int peerId = Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetUniqueId() : 1;
+		if (Multiplayer.HasMultiplayerPeer())
+			Rpc(nameof(RpcReportComplete), peerId);
+		else
+			RpcReportComplete(peerId);
 	}
 
 	private void RegisterGrabInput()
@@ -141,12 +271,162 @@ public partial class Phase1Manager : Node2D
 			InputMap.AddAction("grab");
 			InputMap.ActionAddEvent("grab", new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
 		}
-		// The new project's Input Map uses "jump", not "pular"; SAFER (Space) depends on "pular".
 		if (!InputMap.HasAction("pular"))
 		{
 			InputMap.AddAction("pular");
 			InputMap.ActionAddEvent("pular", new InputEventKey { PhysicalKeycode = Key.Space });
 		}
+	}
+// ------------------------------------------------------------------
+	// LEVEL CONSTRUCTION
+	// ------------------------------------------------------------------
+
+	private void BuildLevel()
+	{
+		// Screen-space background only (does not move with the camera).
+		var backgroundLayer = new CanvasLayer { Name = "Background", Layer = -100 };
+		AddChild(backgroundLayer);
+		var bg = new ColorRect { Color = new Color(0.02f, 0.02f, 0.06f, 1f) };
+		bg.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		backgroundLayer.AddChild(bg);
+
+		// Everything else lives in WORLD space so it follows the camera.
+		worldLayer = new Node2D { Name = "World", ZIndex = -10 };
+		AddChild(worldLayer);
+
+		// Static stars.
+		var rng = new RandomNumberGenerator { Seed = 12345 };
+		for (int i = 0; i < 260; i++)
+		{
+			var star = new ColorRect
+			{
+				Color = new Color(1f, 1f, 1f, rng.RandfRange(0.3f, 0.9f)),
+				Size = new Vector2(2f, 2f),
+				Position = new Vector2(rng.RandfRange(-1000f, 1000f), rng.RandfRange(-700f, 700f))
+			};
+			worldLayer.AddChild(star);
+		}
+
+		BuildShip();
+		BuildCpsMarker();
+		BuildGrips();
+		BuildTool();
+		ComputeBounds();
+	}
+
+	/// <summary>Ship sprite (or a plain rectangle fallback) centered at the world origin.</summary>
+	private void BuildShip()
+	{
+		shipNode = new Node2D { Name = "Ship" };
+		worldLayer.AddChild(shipNode);
+
+		if (ResourceLoader.Exists(ShipTexturePath))
+		{
+			var tex = GD.Load<Texture2D>(ShipTexturePath);
+			if (tex != null)
+			{
+				shipTextureSize = new Vector2(tex.GetWidth(), tex.GetHeight());
+				var spr = new Sprite2D { Texture = tex, Scale = Vector2.One * ShipScale };
+				shipNode.AddChild(spr);
+				return;
+			}
+		}
+
+		// Fallback: a plain rectangle so the level still runs when the art is missing.
+		shipTextureSize = new Vector2(1600, 900);
+		var fallback = new ColorRect
+		{
+			Color = new Color(0.28f, 0.3f, 0.36f),
+			Size = shipTextureSize * ShipScale,
+			Position = -shipTextureSize * ShipScale * 0.5f
+		};
+		shipNode.AddChild(fallback);
+	}
+
+	private void BuildCpsMarker()
+	{
+		Vector2 pos = CpsWorldPosition;
+		var marker = new ColorRect
+		{
+			Color = new Color(0.95f, 0.6f, 0.2f, 0.8f),
+			Size = new Vector2(20f, 20f),
+			Position = pos - new Vector2(10f, 10f)
+		};
+		worldLayer.AddChild(marker);
+	}
+private void BuildGrips()
+	{
+		grips.Clear();
+		foreach (GripDef gd in GripDefs)
+		{
+			var g = new Grip
+			{
+				Name = $"Grip_{grips.Count}",
+				IsStart = gd.IsStart,
+				IsAirlock = gd.IsAirlock,
+				IsCps = gd.IsCps,
+				Position = ImageToWorld(gd.Pos)
+			};
+			grips.Add(g);
+			worldLayer.AddChild(g);
+
+			if (gd.IsStart && startGrip == null) startGrip = g;
+			if (gd.IsAirlock && airlockGrip == null) airlockGrip = g;
+		}
+
+		if (airlockGrip == null) airlockGrip = startGrip;
+		if (startGrip == null && grips.Count > 0) startGrip = grips[0];
+	}
+
+	private void BuildTool()
+	{
+		toolWorldPos = ImageToWorld(ToolImagePos);
+
+		if (ResourceLoader.Exists(ToolTexturePath))
+		{
+			var tex = GD.Load<Texture2D>(ToolTexturePath);
+			if (tex != null)
+			{
+				var spr = new Sprite2D { Texture = tex, Position = toolWorldPos };
+				toolNode = spr;
+				worldLayer.AddChild(spr);
+				return;
+			}
+		}
+
+		// Fallback icon drawn in code (small yellow box).
+		var rect = new ColorRect
+		{
+			Color = Colors.Yellow,
+			Size = new Vector2(14f, 14f),
+			Position = toolWorldPos - new Vector2(7f, 7f)
+		};
+		toolNode = rect;
+		worldLayer.AddChild(rect);
+	}
+
+	/// <summary>Bounds and camera limits come from the image size plus a margin.</summary>
+	private void ComputeBounds()
+	{
+		Vector2 half = shipTextureSize * ShipScale * 0.5f;
+		levelBounds = new Rect2(
+			-half.X - BoundsMargin,
+			-half.Y - BoundsMargin,
+			shipTextureSize.X * ShipScale + BoundsMargin * 2f,
+			shipTextureSize.Y * ShipScale + BoundsMargin * 2f);
+	}
+
+	private void ConfigureSpawner()
+	{
+		spawner = GetNodeOrNull<MultiplayerSpawner>("MultiplayerSpawner");
+		if (spawner == null)
+		{
+			spawner = new MultiplayerSpawner { Name = "MultiplayerSpawner" };
+			AddChild(spawner);
+		}
+		spawner.SpawnPath = new NodePath(".");
+		spawner.AddSpawnableScene("res://Scenes/Phase1/EvaPlayer.tscn");
+		spawner.Spawned += OnPlayerSpawned;
 	}
 
 	private EvaPlayer FindLocalPlayer()
@@ -155,8 +435,6 @@ public partial class Phase1Manager : Node2D
 		{
 			foreach (Node node in GetTree().GetNodesInGroup("network_players"))
 			{
-				// The editor-instanced placeholder (name "EvaPlayer") is hidden and must never
-				// be treated as a real player: only spawner-created suits (peer-id names) count.
 				if (node is EvaPlayer p && int.TryParse(p.Name, out _) && p.IsMultiplayerAuthority())
 				{
 					localPlayer = p;
@@ -178,25 +456,48 @@ public partial class Phase1Manager : Node2D
 		return null;
 	}
 
-	private void ConfigureSpawner()
+	private void SpawnSoloPlayer()
 	{
-		spawner = GetNodeOrNull<MultiplayerSpawner>("MultiplayerSpawner");
-		if (spawner == null)
-		{
-			spawner = new MultiplayerSpawner { Name = "MultiplayerSpawner" };
-			AddChild(spawner);
-		}
-		spawner.SpawnPath = new NodePath(".");
-		spawner.AddSpawnableScene("res://Scenes/Phase1/EvaPlayer.tscn");
-		spawner.Spawned += OnPlayerSpawned;
+		foreach (Node child in GetChildren())
+			if (child is EvaPlayer p && p.Visible) return;
+		var player = new EvaPlayer { Name = "1" };
+		AddChild(player);
+		localPlayer = player;
+		player.SetMultiplayerAuthority(1, true);
+		SetupPlayerStart(player);   // also covers the host-fallback spawn in MP.
+		GD.Print($"Level1: player spawned at {localPlayer.GlobalPosition}");
 	}
 
-	/// <summary>
-	/// Waits a moment for the MultiplayerSpawner to create the server's own suit (peer 1).
-	/// If it never appears, spawns a server-controlled player manually. Runs only on the
-	/// server and never duplicates an existing real player (FindLocalPlayer only accepts
-	/// peer-id-named suits, so the hidden editor placeholder can never block this).
-	/// </summary>
+	private void SetupPlayerStart(EvaPlayer p)
+	{
+		p.StartOnGrip(startGrip);
+		SetupCamera(p);
+	}
+
+	private void SetupCamera(EvaPlayer p)
+	{
+		if (p == null || p.playerCamera == null) return;
+		p.LevelBounds = levelBounds;               // out-of-bounds check uses the image-derived bounds.
+		p.playerCamera.Zoom = new Vector2(CameraZoom, CameraZoom);
+		p.playerCamera.LimitLeft = (int)levelBounds.Position.X;
+		p.playerCamera.LimitTop = (int)levelBounds.Position.Y;
+		p.playerCamera.LimitRight = (int)levelBounds.End.X;
+		p.playerCamera.LimitBottom = (int)levelBounds.End.Y;
+	}
+
+	private void OnPlayerSpawned(Node node)
+	{
+		if (Multiplayer.HasMultiplayerPeer())
+			FindLocalPlayer();
+
+		if (node is EvaPlayer p && Multiplayer.HasMultiplayerPeer())
+		{
+			p.StartOnGrip(startGrip);
+			SetupCamera(p);
+			GD.Print($"Level1: spawned player {p.Name} at {p.GlobalPosition}");
+		}
+	}
+
 	private async void TryEnsureHostPlayer()
 	{
 		await ToSignal(GetTree().CreateTimer(0.5f), SceneTreeTimer.SignalName.Timeout);
@@ -204,27 +505,7 @@ public partial class Phase1Manager : Node2D
 		if (FindLocalPlayer() == null)
 			SpawnSoloPlayer();
 	}
-
-	/// <summary>Places multiplayer-spawned players near the airlock, spread by peer id so they
-	/// never spawn stacked on top of each other (each gets its own clear slot).</summary>
-	private void OnPlayerSpawned(Node node)
-	{
-		// Clients receive their own suit via spawner replication AFTER this scene's _Ready,
-		// so re-resolve the local player the moment any suit pops in (leftover null -> HUD
-		// would be stuck at "waiting for player..." and objectives would never update).
-		if (Multiplayer.HasMultiplayerPeer())
-			FindLocalPlayer();
-
-		if (node is EvaPlayer p && Multiplayer.HasMultiplayerPeer())
-		{
-			int peerId = 1;
-			if (int.TryParse(p.Name, out int id)) peerId = id;
-			p.GlobalPosition = AirlockPosition + new Vector2(80f + (peerId - 1) * 110f, (peerId - 1) * 90f);
-			GD.Print($"Phase1: spawned player {peerId} at {p.GlobalPosition}");
-		}
-	}
-
-	private void SetupHud()
+private void SetupHud()
 	{
 		hudLayer = new CanvasLayer { Name = "HUD", Layer = 100 };
 		AddChild(hudLayer);
@@ -235,13 +516,16 @@ public partial class Phase1Manager : Node2D
 		hudTether = new Label { Position = new Vector2(20, 44), Text = "Tether: OK" };
 		hudLayer.AddChild(hudTether);
 
-		hudObjective = new Label { Position = new Vector2(20, 68), Text = "Objective: Reach the CPS" };
+		hudObjective = new Label { Position = new Vector2(20, 68), Text = "Objective: ..." };
 		hudLayer.AddChild(hudObjective);
 
 		hudTimer = new Label { Position = new Vector2(20, 92), Text = "Time: 0.0s" };
 		hudLayer.AddChild(hudTimer);
 
-		hudDebug = new Label { Position = new Vector2(20, 116), Text = "Debug: waiting..." };
+		hudTool = new Label { Position = new Vector2(20, 116), Text = "Pistol tool: missing" };
+		hudLayer.AddChild(hudTool);
+
+		hudDebug = new Label { Position = new Vector2(20, 140), Text = "Debug: waiting..." };
 		hudLayer.AddChild(hudDebug);
 
 		hudPrompt = new Label { Text = "", HorizontalAlignment = HorizontalAlignment.Center };
@@ -259,25 +543,23 @@ public partial class Phase1Manager : Node2D
 			return;
 		}
 
-		string climbHint = localPlayer.GetSaferCharges() <= 0 && !localPlayer.IsRuptured
-			? "  |  Right mouse: climb the tether"
-			: "";
-		hudCharges.Text = $"SAFER: {localPlayer.GetSaferCharges()}/{localPlayer.SaferChargesDefault}  (Space, jet points at cursor){climbHint}";
+		var lp = localPlayer;
+		hudCharges.Text = $"SAFER: {lp.GetSaferCharges()}/{lp.SaferChargesDefault}  (Space, jet points at cursor)";
 
-		float tension = localPlayer.GetTetherTension();
-		if (localPlayer.IsRuptured)
+		float tension = lp.GetTetherTension();
+		if (lp.IsRuptured)
 		{
 			hudTether.Text = "TETHER RUPTURED - SAFER ONLY";
 			hudTether.Modulate = Colors.Red;
 		}
-		else if (localPlayer.IsTetherCritical)
+		else if (lp.IsTetherCritical)
 		{
-			hudTether.Text = $"TETHER CRITICAL - fatigue {localPlayer.GetFatigueStrikes()}/{localPlayer.MaxFatigueStrikes}";
+			hudTether.Text = $"TETHER CRITICAL - fatigue {lp.GetFatigueStrikes()}/{lp.MaxFatigueStrikes}";
 			hudTether.Modulate = Colors.Red;
 		}
-		else if (localPlayer.IsTetherTaut)
+		else if (lp.IsTetherTaut)
 		{
-			hudTether.Text = "TETHER TAUT - THRUSTERS OFFLINE (reeling in...)";
+			hudTether.Text = "ROPE TAUT - REELING IN (hold right mouse)";
 			hudTether.Modulate = Colors.Yellow;
 		}
 		else
@@ -286,161 +568,198 @@ public partial class Phase1Manager : Node2D
 			hudTether.Modulate = tension > 0.8f ? Colors.Yellow : Colors.White;
 		}
 
-		hudDebug.Text = $"Pos: {localPlayer.GlobalPosition:F0} | Vel: {localPlayer.Velocity:F0} | State: {localPlayer.state} | Rope: {localPlayer.GetRopeState()} | Stress: {localPlayer.GetFatigueStrikes()}/{localPlayer.MaxFatigueStrikes} | F9 = teleport to CPS";
+		hudTool.Text = lp.HasTool ? "Pistol tool: carried" : "Pistol tool: missing";
+		hudDebug.Text = $"Pos: {lp.GlobalPosition:F0} | State: {lp.state} | F9 = teleport to CPS | F2 = grip overlay";
 
-		if (state == PhaseState.CpsArrival && !localCompleted)
-			hudPrompt.Text = localPlayer.Velocity.Length() < CpsInteractSpeedMax
-				? "Press E to calibrate the actuators"
-				: "Slow down to calibrate the actuators";
+		if (!lp.HasTool && IsNearTool(lp.GlobalPosition))
+			hudPrompt.Text = "Press E to pick up the pistol tool";
+		else if (lp.IsHoldingCpsGrip)
+			hudPrompt.Text = lp.HasTool ? "Press E to start CPS calibration" : "You need the pistol tool";
 		else
 			hudPrompt.Text = "";
 	}
 
-	private void SpawnSoloPlayer()
+	private void UpdateGripHighlights()
 	{
-		// Skip the editor-instanced placeholder (hidden in multiplayer) so the real host
-		// player is still created.
-		foreach (Node child in GetChildren())
-			if (child is EvaPlayer p && p.Visible) return;
-		var player = new EvaPlayer();
-		player.Name = "1";
-		player.Position = AirlockPosition + new Vector2(80f, 0f);
-		AddChild(player);
-		localPlayer = player;
-		player.SetMultiplayerAuthority(1, true);
-		GD.Print($"Phase1: player spawned at {localPlayer.GlobalPosition}");
+		if (localPlayer == null)
+		{
+			foreach (Grip g in grips) { g.Highlighted = false; g.UnderCursor = false; }
+			return;
+		}
+		Vector2 mouse = localPlayer.GetGlobalMousePosition();
+		float reach = localPlayer.ArmReach;
+		foreach (Grip g in grips)
+		{
+			g.UnderCursor = g.GlobalPosition.DistanceTo(mouse) <= 20f;
+			g.Highlighted = localPlayer.GlobalPosition.DistanceTo(g.GlobalPosition) <= reach + localPlayer.GrabRadius;
+		}
 	}
 
-	private void BuildLevel()
+	private void UpdateDebugOverlay()
 	{
-		// Static registry persists across scene reloads: start fresh every time.
-		TetherHullSegments.Clear();
-
-		// Screen-space background only (does not move with the camera).
-		var backgroundLayer = new CanvasLayer { Name = "Background", Layer = -100 };
-		AddChild(backgroundLayer);
-
-		var bg = new ColorRect { Color = new Color(0.02f, 0.02f, 0.06f, 1f) };
-		bg.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-		backgroundLayer.AddChild(bg);
-
-		// Everything else lives in WORLD space, so it follows the camera.
-		// ZIndex < 0 keeps the world behind the astronaut (the player is a sibling added earlier).
-		worldLayer = new Node2D { Name = "World", ZIndex = -10 };
-		AddChild(worldLayer);
-
-		// Stars (world space, static)
-		var rng = new RandomNumberGenerator { Seed = 12345 };
-		for (int i = 0; i < 300; i++)
+		if (localPlayer == null) return;
+		for (int i = 0; i < grips.Count && i < debugGripLabels.Count; i++)
 		{
-			var star = new ColorRect
-			{
-				Color = new Color(1f, 1f, 1f, rng.RandfRange(0.35f, 0.9f)),
-				Size = new Vector2(2f, 2f),
-				Position = new Vector2(rng.RandfRange(-1200f, 2200f), rng.RandfRange(-900f, 1200f))
-			};
-			worldLayer.AddChild(star);
+			Grip g = grips[i];
+			string flags = (g.IsStart ? "S" : "") + (g.IsAirlock ? "A" : "") + (g.IsCps ? "C" : "");
+			debugGripLabels[i].Text = $"[{i}]{flags}";
+			debugGripLabels[i].Position = g.GlobalPosition + new Vector2(12, -16);
+		}
+		if (debugToolLabel != null)
+		{
+			debugToolLabel.Text = "Tool";
+			debugToolLabel.Position = toolWorldPos + new Vector2(12, 10);
+		}
+		if (debugMouseLabel != null)
+		{
+			Vector2 img = WorldToImage(localPlayer.GetGlobalMousePosition());
+			debugMouseLabel.Text = $"img ({img.X:F0},{img.Y:F0})";
+			debugMouseLabel.Position = localPlayer.GetGlobalMousePosition() + new Vector2(14, -16);
+		}
+	}
+private void SetupDecor()
+	{
+		// One debug label per grip, plus the tool and mouse labels (all in world space).
+		foreach (Grip g in grips)
+		{
+			debugGripLabels.Add(new Label { Visible = false, Modulate = new Color(1f, 1f, 0.5f) });
+			worldLayer.AddChild(debugGripLabels[debugGripLabels.Count - 1]);
+		}
+		debugToolLabel = new Label { Visible = false, Modulate = new Color(1f, 0.6f, 0.6f) };
+		worldLayer.AddChild(debugToolLabel);
+		debugMouseLabel = new Label { Visible = false, Modulate = new Color(0.6f, 1f, 1f) };
+		worldLayer.AddChild(debugMouseLabel);
+	}
+
+	/// <summary>Toggles the F2 debug grip overlay (shows indices, flags, tool and mouse in image px).</summary>
+	public void ToggleDebugOverlay()
+	{
+		debugActive = !debugActive;
+		foreach (Label l in debugGripLabels) l.Visible = debugActive;
+		if (debugToolLabel != null) debugToolLabel.Visible = debugActive;
+		if (debugMouseLabel != null) debugMouseLabel.Visible = debugActive;
+		GD.Print("[Level1] Debug grip overlay " + (debugActive ? "ON - Shift+LMB prints image coords" : "OFF"));
+	}
+
+	/// <summary>Called by the player when the pistol tool is collected: the loose object disappears.</summary>
+	public void OnToolPickedUp()
+	{
+		if (toolNode != null)
+		{
+			toolNode.QueueFree();
+			toolNode = null;
+		}
+	}
+
+	/// <summary>The level starts fully black and fades in slowly (about FadeInDuration seconds).</summary>
+	private void SetupFadeIn()
+	{
+		var layer = new CanvasLayer
+		{
+			Name = "FadeIn",
+			Layer = 200,
+			ProcessMode = ProcessModeEnum.Always   // keep fading even while the briefing pauses the tree.
+		};
+		AddChild(layer);
+
+		var rect = new ColorRect { Color = Colors.Black, MouseFilter = Control.MouseFilterEnum.Ignore };
+		rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		layer.AddChild(rect);
+
+		Tween tween = layer.CreateTween();
+		tween.TweenProperty(rect, "modulate:a", 0f, FadeInDuration);
+		tween.TweenCallback(Callable.From(() => layer.QueueFree()));
+	}
+
+	private void UpdateObjective()
+	{
+		bool noTool = localPlayer != null && !localPlayer.HasTool;
+		string objective;
+		switch (state)
+		{
+			case PhaseState.Start:
+			case PhaseState.Transit:
+				objective = noTool
+					? "Objective: Use the SAFER to reach the pistol tool near the base, then grab a grip"
+					: "Objective: Climb grip to grip to the CPS (hold left mouse on a grip)";
+				break;
+			case PhaseState.CpsArrival:
+				objective = noTool
+					? "Objective: Go back near the base and fetch the pistol tool"
+					: "Objective: Press E at the CPS grip to start calibration";
+				break;
+			case PhaseState.Minigame:
+				objective = "Objective: Spin the mouse around the dial (Esc to cancel)";
+				break;
+			case PhaseState.Return:
+				objective = "Objective: Return to the airlock grip (right mouse to reel back)";
+				break;
+			case PhaseState.Completed:
+				objective = "Objective: Level complete";
+				break;
+			default:
+				objective = "Objective: Mission failed";
+				break;
+		}
+		hudObjective.Text = objective;
+	}
+
+	/// <summary>Startup layout checker (runs once in _Ready).</summary>
+	private void ValidateLayout()
+	{
+		float reach = localPlayer != null ? localPlayer.ArmReach : 140f;
+		if (startGrip == null)
+		{
+			GD.PushWarning("[Level1] VALIDATION: no IsStart grip found. Add startGrip= true to a grip.");
+			return;
 		}
 
-		// Level bounds (visual only)
-		var bounds = new ColorRect { Color = new Color(0.3f, 0.3f, 0.4f, 0.15f) };
-		bounds.Size = LevelBounds.Size;
-		bounds.Position = LevelBounds.Position;
-		worldLayer.AddChild(bounds);
-
-		// Airlock block (centered on AirlockPosition)
-		var airlock = new ColorRect { Size = new Vector2(100, 140), Color = new Color(0.5f, 0.5f, 0.55f) };
-		airlock.Position = AirlockPosition + new Vector2(-50, -70);
-		worldLayer.AddChild(airlock);
-		var airlockLabel = new Label
+		var reachable = new HashSet<Grip>();
+		var queue = new Queue<Grip>();
+		reachable.Add(startGrip);
+		queue.Enqueue(startGrip);
+		while (queue.Count > 0)
 		{
-			Text = "Utility Tunnel / MMSEV",
-			Position = AirlockPosition + new Vector2(-100, -110),
-			Size = new Vector2(200, 24),
-			HorizontalAlignment = HorizontalAlignment.Center
-		};
-		worldLayer.AddChild(airlockLabel);
+			Grip g = queue.Dequeue();
+			foreach (Grip n in grips)
+			{
+				if (!reachable.Contains(n) && g.GlobalPosition.DistanceTo(n.GlobalPosition) <= reach)
+				{
+					reachable.Add(n);
+					queue.Enqueue(n);
+				}
+			}
+		}
 
-		// CPS block (centered on CpsPosition)
-		var cpsBlock = new ColorRect { Size = new Vector2(120, 160), Color = new Color(0.9f, 0.8f, 0.2f) };
-		cpsBlock.Position = CpsPosition + new Vector2(-60, -80);
-		worldLayer.AddChild(cpsBlock);
-		var cpsLabel = new Label
+		bool cpsOk = false, airOk = false;
+		for (int i = 0; i < grips.Count; i++)
 		{
-			Text = "Cryogenic Propulsion Stage",
-			Position = CpsPosition + new Vector2(-140, -110),
-			Size = new Vector2(280, 24),
-			HorizontalAlignment = HorizontalAlignment.Center
-		};
-		worldLayer.AddChild(cpsLabel);
-		var frozenMarker = new ColorRect { Size = new Vector2(20, 20), Color = Colors.Red };
-		frozenMarker.Position = CpsPosition + new Vector2(-10, 30);
-		worldLayer.AddChild(frozenMarker);
+			Grip g = grips[i];
+			if (g.IsCps && reachable.Contains(g)) cpsOk = true;
+			if (g.IsAirlock && reachable.Contains(g)) airOk = true;
+			if (!reachable.Contains(g))
+				GD.PushWarning($"[Level1] VALIDATION: grip #{i} at img {WorldToImage(g.GlobalPosition)} is NOT reachable from the start (reach {reach}).");
+		}
+		GD.Print($"[Level1] VALIDATION: start reach {reach}; IsCps reachable={cpsOk}; IsAirlock reachable={airOk}");
 
-		// Tether anchor at the airlock (the player re-clips the cable to the rails it grabs)
-		var tetherAnchor = new Node2D { Name = "TetherAnchor", Position = AirlockPosition };
-		worldLayer.AddChild(tetherAnchor);
-		tetherAnchor.AddToGroup("tether_anchor");
-
-		// Continuous hull structure: dark plating runs under every rail and bridges the
-		// SAFER-jump gaps, so the handrails read as mounted on one continuous spacecraft hull.
-		// Hull segments are also registered for the tether's corner-wrap (order 3).
-		HullRail(new Vector2(-250, 0), new Vector2(-100, 0));
-		HullRail(new Vector2(-100, -40), new Vector2(-100, -140));
-		HullRail(new Vector2(-100, -140), new Vector2(400, -140));
-		HullRail(new Vector2(400, -140), new Vector2(400, -40));
-		HullRail(new Vector2(650, 0), new Vector2(900, 0));
-		HullRail(new Vector2(900, 0), new Vector2(900, 100));
-		HullRail(new Vector2(1150, 140), new Vector2(1300, 140));
-		HullRail(new Vector2(1300, 140), new Vector2(1300, 0));
-
-		// Hull-only truss bridges across the rail gaps (the yellow rail still needs the SAFER jump).
-		CreateHullSegment(new Vector2(-100, 0), new Vector2(-100, -40));
-		CreateHullSegment(new Vector2(400, -40), new Vector2(650, 0));
-		CreateHullSegment(new Vector2(900, 100), new Vector2(1150, 140));
-	}
-
-	private void HullRail(Vector2 from, Vector2 to)
-	{
-		CreateHullSegment(from, to);
-		CreateHandrail(from, to);
-	}
-
-	/// <summary>
-	/// Adds a dark metallic structural hull plate under a rail (or bridging a gap) and registers
-	/// its edge so the player's tether can bend around its corners instead of clipping through.
-	/// </summary>
-	private void CreateHullSegment(Vector2 a, Vector2 b)
-	{
-		Vector2 dir = b - a;
-		float len = dir.Length();
-		if (len < 0.001f) return;
-		dir /= len;
-
-		const float thickness = 16f;
-		Vector2 n = new Vector2(-dir.Y, dir.X) * (thickness * 0.5f);
-
-		string safeName = ($"{a.X}_{a.Y}_{b.X}_{b.Y}").Replace(".", "p").Replace("-", "m");
-		var hull = new Polygon2D
+		// Tool must be out of arm reach of every grip (it must need the SAFER), yet
+		// reachable by the rope from the start so reeling in works.
+		foreach (Grip g in grips)
 		{
-			Name = "Hull_" + safeName,
-			Polygon = new Vector2[] { a + n, a - n, b - n, b + n },
-			Color = new Color(0.30f, 0.32f, 0.37f, 0.9f)
-		};
-		worldLayer.AddChild(hull);
-		TetherHullSegments.Add((a, b));
+			if (g.GlobalPosition.DistanceTo(toolWorldPos) <= reach)
+			{
+				GD.PushWarning("[Level1] VALIDATION: pistol tool is within arm reach of a grip - it must need the SAFER.");
+				break;
+			}
+		}
+		float maxRope = localPlayer != null ? localPlayer.TetherMaxLength : 300f;
+		float distToolStart = startGrip.GlobalPosition.DistanceTo(toolWorldPos);
+		if (distToolStart > maxRope - TetherValidationMargin)
+			GD.PushWarning($"[Level1] VALIDATION: tool is {distToolStart:F0}px from start (rope max {maxRope}) - beyond rope range, SAFER required (intended).");
+		else
+			GD.Print($"[Level1] VALIDATION: tool is {distToolStart:F0}px from start (< rope max {maxRope}) - reachable by reeling.");
 	}
-
-	private void CreateHandrail(Vector2 start, Vector2 end)
-	{
-		var rail = new Handrail { Name = $"Handrail_{start.X}_{start.Y}_{end.X}_{end.Y}".Replace("-", "m") };
-		rail.Position = start;
-		rail.StartOffset = Vector2.Zero;
-		rail.EndOffset = end - start;
-		worldLayer.AddChild(rail);
-	}
-
-	private void SetupScreens()
+private void SetupScreens()
 	{
 		var screenLayer = new CanvasLayer { Name = "Screens", Layer = 110 };
 		AddChild(screenLayer);
@@ -526,11 +845,7 @@ public partial class Phase1Manager : Node2D
 	private void OnLocalMinigameCompleted()
 	{
 		localCompleted = true;
-		int peerId = Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetUniqueId() : 1;
-		if (Multiplayer.HasMultiplayerPeer())
-			Rpc(nameof(RpcReportComplete), peerId);
-		else
-			RpcReportComplete(peerId);
+		state = PhaseState.Return;   // minigame done: now the level needs the return to the airlock.
 		UpdateObjective();
 	}
 
@@ -573,40 +888,21 @@ public partial class Phase1Manager : Node2D
 		if (cpsMinigame != null && cpsMinigame.IsOpen) cpsMinigame.Close();
 		ShowFailureScreen();
 	}
-
-	private void UpdateObjective()
-	{
-		string objective;
-		if (state == PhaseState.Minigame && localCompleted)
-			objective = "Objective: Waiting for your teammates to finish";
-		else
-			objective = state switch
-			{
-				PhaseState.Airlock => "Objective: Leave the airlock and grab the yellow handrails (hold left mouse)",
-				PhaseState.Transit => "Objective: Follow the handrails to the CPS (use SAFER for the gaps)",
-				PhaseState.CpsArrival => "Objective: Press E at the CPS to start calibration",
-				PhaseState.Minigame => "Objective: Spin the mouse around the dial (Esc to cancel)",
-				PhaseState.Completed => "Objective: Mission complete",
-				_ => "Objective: Mission failed"
-			};
-		hudObjective.Text = objective;
-	}
-
-	private void ShowSuccessScreen()
+private void ShowSuccessScreen()
 	{
 		screenOverlay.Visible = true;
-		screenTitle.Text = "PHASE 1 COMPLETE";
-		screenReason.Text = "Thermal actuators unfrozen.";
+		screenTitle.Text = "LEVEL 1 COMPLETE";
+		screenReason.Text = "Thermal actuators unfrozen. Pistol tool recovered and returned to the airlock.";
 		screenDetails.Text = $"Time: {MissionTime:F1}s | Energy: 160 kWh | Comms: stable (1.3-2s latency) | Mass: ~115,000 kg";
 		screenBtnRetry.Visible = false;
 		screenBtnNext.Visible = ResourceLoader.Exists(NextScenePath);
 		screenBtnMenu.Text = "Back to Menu";
 		screenBtnMenu.Visible = true;
 
-		// Show the end-of-mission ranking (F-S) on top, together with the
-		// player's statistics. In multiplayer every peer computes their own, so
-		// each player sees their own rank. CONTINUE hides this overlay and the
-		// standard success buttons (Next phase / Back to Menu) appear below.
+		// End-of-mission ranking (F-S). CONTINUE hides this overlay and the standard
+		// success buttons (Next phase / Back to Menu) appear below.
+		// TODO(flow): when a GameFlow/"return to DHS" progression exists, this should
+		// load the DHS (Level 2) scene instead of stopping on the result screen.
 		FindLocalPlayer();
 		if (localPlayer != null)
 			missionSummary.Show(
@@ -614,9 +910,9 @@ public partial class Phase1Manager : Node2D
 				localPlayer.GetFatigueStrikes(),
 				localPlayer.IsRuptured,
 				localPlayer.GetSaferCharges(),
-				"PHASE 1 COMPLETE");
+				"LEVEL 1 COMPLETE");
 		else
-			missionSummary.Show(MissionTime, 0, false, 0, "PHASE 1 COMPLETE");
+			missionSummary.Show(MissionTime, 0, false, 0, "LEVEL 1 COMPLETE");
 
 		Sfx.Play(this, "mission_complete");
 		UpdateObjective();
@@ -638,7 +934,7 @@ public partial class Phase1Manager : Node2D
 
 	private void Retry() => RestartPhase();
 
-	/// <summary>Single restart entry point for Phase 1 (out-of-bounds, retry button, etc.).</summary>
+	/// <summary>Single restart entry point for Level 1 (out-of-bounds, retry button, etc.).</summary>
 	public void RestartPhase()
 	{
 		GetTree().ChangeSceneToFile("res://Scenes/Phase1/Phase1.tscn");

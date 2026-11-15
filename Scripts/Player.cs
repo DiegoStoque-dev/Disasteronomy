@@ -113,8 +113,6 @@ public partial class Player : CharacterBody2D
             camera.PositionSmoothingSpeed = 7f;
         }
 
-        EnsureVelocityReplication();
-
         // Standalone (Player.tscn opened directly) still gets a small room so the
         // platformer movement is testable without the Lobby scene.
         EnsureStandaloneRoom();
@@ -220,23 +218,6 @@ public partial class Player : CharacterBody2D
             target.AddFrame(animationName, source.GetFrameTexture(animationName, i));
     }
 
-    /// <summary>
-    /// The MultiplayerSynchronizer (from Player.tscn) replicates position and
-    /// sprite animation. Velocity is added too so remote players interpolate
-    /// smoothly instead of snapping.
-    /// </summary>
-    private void EnsureVelocityReplication()
-    {
-        var sync = GetNodeOrNull<MultiplayerSynchronizer>("MultiplayerSynchronizer");
-        if (sync == null)
-            return;
-
-        var config = sync.ReplicationConfig ?? new SceneReplicationConfig();
-        var velocityPath = new NodePath(".:velocity");
-        config.AddProperty(velocityPath);
-        config.PropertySetReplicationMode(velocityPath, SceneReplicationConfig.ReplicationMode.Always);
-        sync.ReplicationConfig = config;
-    }
 
     /// <summary>
     /// Platformer physics mirroring Sazsazan's scheme, under adapted microgravity:
