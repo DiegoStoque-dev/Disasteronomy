@@ -16,7 +16,7 @@ public partial class Grip : Node2D
 	[Export] public bool IsAirlock { get; set; }
 	[Export] public bool IsCps { get; set; }
 
-	[Export] public float Radius = 8f;
+	[Export] public float Radius = 4f;
 
 	/// <summary>Set by the manager each frame; glows when within reach of the player.</summary>
 	public bool Highlighted { get; set; }
@@ -45,8 +45,8 @@ public partial class Grip : Node2D
 		// Glow halo when it can be grabbed or is under the cursor.
 		if (lastGlow)
 		{
-			DrawCircle(Vector2.Zero, Radius + 7f, new Color(1f, 1f, 0.3f, 0.35f));
-			DrawArc(Vector2.Zero, Radius + 7f, 0f, Mathf.Tau, 24, Colors.White, 2f);
+			DrawCircle(Vector2.Zero, Radius + 4f, new Color(1f, 1f, 0.3f, 0.35f));
+			DrawArc(Vector2.Zero, Radius + 4f, 0f, Mathf.Tau, 24, Colors.White, 1f);
 		}
 
 		// Small anodized-yellow handle.
@@ -55,10 +55,10 @@ public partial class Grip : Node2D
 
 		// Flag notches: start = green, airlock = cyan, CPS = red (debug aid).
 		if (IsStart)
-			DrawCircle(new Vector2(0f, -Radius - 3f), 2.5f, Colors.Green);
+			DrawCircle(new Vector2(0f, -Radius - 2f), 1.5f, Colors.Green);
 		if (IsAirlock)
-			DrawCircle(new Vector2(-Radius - 3f, 0f), 2.5f, Colors.Cyan);
+			DrawCircle(new Vector2(-Radius - 2f, 0f), 1.5f, Colors.Cyan);
 		if (IsCps)
-			DrawCircle(new Vector2(Radius + 3f, 0f), 2.5f, Colors.Red);
+			DrawCircle(new Vector2(Radius + 2f, 0f), 1.5f, Colors.Red);
 	}
 }

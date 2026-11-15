@@ -35,7 +35,13 @@ public partial class Phase1Manager : Node2D
 	// ------------------------------------------------------------------
 	// CPS
 	// ------------------------------------------------------------------
-	[Export] public Vector2 CpsImagePos = new Vector2(118, 245); // image pixels.
+	[Export] public Vector2 CpsImagePos = new Vector2(244, 14); // image pixels.
+
+	// ------------------------------------------------------------------
+	// DIRECTION ARROW (HUD): shown only when the next target is far away.
+	// ------------------------------------------------------------------
+	[Export] public float ArrowShowDistance = 600f;  // world px: show the arrow only beyond this distance.
+	[Export] public float ArrowOrbitRadius = 90f;    // screen px: the arrow orbits the player at this radius.
 
 	[Export] public float MissionTime = 0f;
 	[Export] public string NextScenePath = "res://Scenes/Phase2/Phase2.tscn";
@@ -60,7 +66,7 @@ public partial class Phase1Manager : Node2D
 		new GripDef { Pos = new Vector2(117, 190) },                                 // gold tab on top of left module
 		new GripDef { Pos = new Vector2(153, 189) },                                 // gold tab on top of left module
 		new GripDef { Pos = new Vector2(118, 215) },                                 // gold diamond (CPS) top
-		new GripDef { Pos = new Vector2(118, 245), IsCps = true },                   // gold diamond (CPS) center
+		new GripDef { Pos = new Vector2(118, 245) },                                 // gold diamond (CPS) center
 		new GripDef { Pos = new Vector2(118, 278) },                                 // gold diamond (CPS) bottom
 		new GripDef { Pos = new Vector2(214, 218) },                                 // top tab at solar panel base
 		new GripDef { Pos = new Vector2(272, 218) },                                 // top tab at solar panel base
@@ -68,7 +74,7 @@ public partial class Phase1Manager : Node2D
 		new GripDef { Pos = new Vector2(244, 155) },                                 // long vertical gold rail
 		new GripDef { Pos = new Vector2(244, 110) },                                 // long vertical gold rail
 		new GripDef { Pos = new Vector2(244, 65) },                                  // long vertical gold rail
-		new GripDef { Pos = new Vector2(244, 20) },                                  // long vertical gold rail
+		new GripDef { Pos = new Vector2(244, 20), IsCps = true },                    // long vertical gold rail (top cap = CPS)
 		new GripDef { Pos = new Vector2(214, 278) },                                 // bottom tab at solar panel base
 		new GripDef { Pos = new Vector2(272, 278) },                                 // bottom tab at solar panel base
 	};
@@ -116,6 +122,10 @@ public partial class Phase1Manager : Node2D
 	private Grip airlockGrip;
 	private Node toolNode;                    // the loose pistol tool.
 	private Vector2 toolWorldPos;
+
+	// HUD direction arrow.
+	private Control arrowControl;             // rotated filled triangle pointing at the target.
+	private Label arrowLabel;                 // tiny distance label next to the arrow.
 
 	// Debug overlay (F2).
 	private bool debugActive = false;
@@ -218,6 +228,7 @@ public partial class Phase1Manager : Node2D
 
 	public override void _Process(double delta)
 	{
+		UpdateDirectionArrow();
 		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
 
 		MissionTime += (float)delta;
@@ -538,6 +549,23 @@ private void SetupHud()
 		hudDebug = new Label { Position = new Vector2(20, 140), Text = "Debug: waiting..." };
 		hudLayer.AddChild(hudDebug);
 
+		arrowControl = new DirectionArrow
+		{
+			Name = "DirectionArrow",
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			Visible = false
+		};
+		hudLayer.AddChild(arrowControl);
+
+		arrowLabel = new Label
+		{
+			Name = "DirectionArrowLabel",
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			Visible = false
+		};
+		arrowLabel.AddThemeFontSizeOverride("font_size", 14);
+		hudLayer.AddChild(arrowLabel);
+
 		hudPrompt = new Label { Text = "", HorizontalAlignment = HorizontalAlignment.Center };
 		hudLayer.AddChild(hudPrompt);
 		hudPrompt.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.BottomWide);
@@ -681,6 +709,78 @@ private void SetupDecor()
 		tween.TweenCallback(Callable.From(() => layer.QueueFree()));
 	}
 
+	/// <summary>
+	/// HUD arrow pointing at the current objective (pistol tool / CPS / returning airlock).
+	/// Shown only while the target is farther than ArrowShowDistance world px.
+	/// </summary>
+	private void UpdateDirectionArrow()
+	{
+		Vector2 worldTarget = Vector2.Zero;
+		bool hasTarget = false;
+
+		if (localPlayer != null && IsInstanceValid(localPlayer))
+		{
+			switch (state)
+			{
+				case PhaseState.Minigame:
+				case PhaseState.Completed:
+				case PhaseState.Failed:
+					break; // no arrow while the minigame / end screens are up.
+				default:
+					if (!localPlayer.HasTool && toolNode != null && IsInstanceValid(toolNode))
+					{
+						worldTarget = toolWorldPos;
+						hasTarget = true;
+					}
+					else if (localPlayer.HasTool && !localCompleted)
+					{
+						worldTarget = CpsWorldPosition;
+						hasTarget = true;
+					}
+					else if (localCompleted)
+					{
+						Grip returnGrip = airlockGrip != null ? airlockGrip : startGrip;
+						if (returnGrip != null)
+						{
+							worldTarget = returnGrip.GlobalPosition;
+							hasTarget = true;
+						}
+					}
+					break;
+			}
+		}
+
+		if (!hasTarget)
+		{
+			HideDirectionArrow();
+			return;
+		}
+
+		float dist = localPlayer.GlobalPosition.DistanceTo(worldTarget);
+		if (dist <= ArrowShowDistance)
+		{
+			HideDirectionArrow();
+			return;
+		}
+
+		Vector2 dir = (worldTarget - localPlayer.GlobalPosition).Normalized();
+		Vector2 playerScreen = localPlayer.GetGlobalTransformWithCanvas().Origin;
+		Vector2 arrowPos = playerScreen + dir * ArrowOrbitRadius;
+
+		arrowControl.Position = arrowPos;
+		arrowControl.Rotation = dir.Angle();
+		arrowControl.Visible = true;
+
+		arrowLabel.Text = $"{Mathf.RoundToInt(dist / 10f)}m";
+		arrowLabel.Position = arrowPos + new Vector2(20f, -30f);
+		arrowLabel.Visible = true;
+	}
+
+	private void HideDirectionArrow()
+	{
+		if (arrowControl != null) arrowControl.Visible = false;
+		if (arrowLabel != null) arrowLabel.Visible = false;
+	}
 	private void UpdateObjective()
 	{
 		bool noTool = localPlayer != null && !localPlayer.HasTool;
@@ -959,5 +1059,19 @@ private void ShowSuccessScreen()
 	private void BackToMenu()
 	{
 		GetTree().ChangeSceneToFile("res://Scenes/MainMenu.tscn");
+	}
+}
+
+/// <summary>
+/// HUD direction arrow: a small filled yellow triangle drawn by <see cref="Phase1Manager"/>,
+/// which positions and rotates it on the screen so it points at a far-away target.
+/// </summary>
+public partial class DirectionArrow : Control
+{
+	public override void _Draw()
+	{
+		DrawColoredPolygon(
+			new Vector2[] { new Vector2(7, 0), new Vector2(-7, -7), new Vector2(-7, 7) },
+			new Color(1f, 1f, 0f, 0.85f));
 	}
 }
