@@ -192,18 +192,18 @@ public partial class ShipHud : CanvasLayer
         _panel.AddThemeStyleboxOverride("panel", style);
         _root.AddChild(_panel);
 
-        // Bottom-left corner, compact and discreet.
+        // Bottom-left, 16px standard margins. Rect: (16, 394)-(400, 632), 384x238.
         _panel.AnchorLeft = 0f;
         _panel.AnchorRight = 0f;
         _panel.AnchorTop = 1f;
         _panel.AnchorBottom = 1f;
-        _panel.OffsetLeft = 8f;
-        _panel.OffsetRight = 302f;
-        _panel.OffsetTop = -148f;
-        _panel.OffsetBottom = -10f;
+        _panel.OffsetLeft = 16f;
+        _panel.OffsetRight = 400f;
+        _panel.OffsetTop = -254f;
+        _panel.OffsetBottom = -16f;
 
         var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 6);
+        box.AddThemeConstantOverride("separation", 8);
         _panel.AddChild(box);
 
         _log = new RichTextLabel
@@ -214,12 +214,12 @@ public partial class ShipHud : CanvasLayer
             FitContent = false,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        _log.AddThemeFontSizeOverride("normal_font_size", 13);
-        _log.CustomMinimumSize = new Vector2(0, 82f);
+        _log.AddThemeFontSizeOverride("normal_font_size", 15);
+        _log.CustomMinimumSize = new Vector2(0, 180f);
         box.AddChild(_log);
 
         var inputRow = new HBoxContainer();
-        inputRow.AddThemeConstantOverride("separation", 6);
+        inputRow.AddThemeConstantOverride("separation", 8);
         box.AddChild(inputRow);
 
         _chatInput = new LineEdit
@@ -250,10 +250,11 @@ public partial class ShipHud : CanvasLayer
         _interactPrompt.AnchorRight = 0.5f;
         _interactPrompt.AnchorTop = 1f;
         _interactPrompt.AnchorBottom = 1f;
-        _interactPrompt.OffsetLeft = -260f;
-        _interactPrompt.OffsetRight = 260f;
-        _interactPrompt.OffsetTop = -170f;
-        _interactPrompt.OffsetBottom = -136f;
+        // 320 wide (offsets 160 each side), bottom margin 16. Rect: (416, 596)-(736, 632).
+        _interactPrompt.OffsetLeft = -160f;
+        _interactPrompt.OffsetRight = 160f;
+        _interactPrompt.OffsetTop = -52f;
+        _interactPrompt.OffsetBottom = -16f;
 
         // --- Countdown label (center, during the terminal activation) ---
         _countdownLabel = new Label
@@ -267,8 +268,16 @@ public partial class ShipHud : CanvasLayer
         _countdownLabel.AddThemeColorOverride("font_color", new Color(0.95f, 0.8f, 0.35f));
         _root.AddChild(_countdownLabel);
 
-        _countdownLabel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.Center);
-        _countdownLabel.CustomMinimumSize = new Vector2(900, 90);
+        // Centered 900x90 (Rect: (126, 279)-(1026, 369)); not reduced.
+        _countdownLabel.AnchorLeft = 0.5f;
+        _countdownLabel.AnchorRight = 0.5f;
+        _countdownLabel.AnchorTop = 0.5f;
+        _countdownLabel.AnchorBottom = 0.5f;
+        _countdownLabel.OffsetLeft = -450f;
+        _countdownLabel.OffsetRight = 450f;
+        _countdownLabel.OffsetTop = -45f;
+        _countdownLabel.OffsetBottom = 45f;
+        _countdownLabel.Visible = false;
         _countdownLabel.Visible = false;
     }
 }

@@ -116,14 +116,16 @@ public partial class ObjectiveHud : CanvasLayer
 		};
 		column.AnchorLeft = 0.5f;
 		column.AnchorRight = 0.5f;
-		column.AnchorTop = 1f;
-		column.AnchorBottom = 1f;
-		// Kept above the bottom-left chat panel so the two never overlap across
-		// resolutions; still centered and compact.
+		column.AnchorTop = 0f;
+		column.AnchorBottom = 0f;
+		// Moved to the top-center: the only placement that keeps the vertical
+		// overlay centered, applies the 16px margin, and does NOT overlap the
+		// countdown (126,279)-(1026,369), the chat (16,394)-(400,632) nor the
+		// terminal prompt (416,596)-(736,632). Rect: (256, 16)-(896, 166).
 		column.OffsetLeft = -320f;
 		column.OffsetRight = 320f;
-		column.OffsetTop = -330f;
-		column.OffsetBottom = -188f;
+		column.OffsetTop = 16f;
+		column.OffsetBottom = 166f;
 		column.AddThemeConstantOverride("separation", 8);
 		_root.AddChild(column);
 

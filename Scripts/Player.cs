@@ -31,19 +31,29 @@ using Godot;
 public partial class Player : CharacterBody2D
 {
     // --- Sazsazan platformer movement (adapted microgravity) ---
-    [Export] public float MoveSpeed = 300f;
-    /// <summary>Ground horizontal acceleration (responsive start).</summary>
-    [Export] public float GroundAcceleration = 1500f;
-    /// <summary>Air horizontal acceleration (reduced mid-air control).</summary>
-    [Export] public float AirAcceleration = 700f;
-    /// <summary>Ground friction when there is no input (stops the drift).</summary>
-    [Export] public float GroundFriction = 1800f;
+    [Export] public float MoveSpeed = 150f;
+    /// <summary>Ground horizontal acceleration (responsive start, reduced).</summary>
+    [Export] public float GroundAcceleration = 800f;
+    /// <summary>Air horizontal acceleration (reduced mid-air control, more inertia).</summary>
+    [Export] public float AirAcceleration = 300f;
+    /// <summary>Ground friction when there is no input (lower = more inertia/drift).</summary>
+    [Export] public float GroundFriction = 500f;
     /// <summary>Adapted microgravity: a weak downward pull, below Earth gravity.</summary>
-    [Export] public float MicroGravity = 300f;
-    /// <summary>Maximum fall speed (keeps physics stable).</summary>
-    [Export] public float TerminalFallSpeed = 620f;
-    /// <summary>Upward impulse applied by the jump command (pular).</summary>
-    [Export] public float JumpVelocity = -360f;
+    [Export] public float MicroGravity = 130f;
+    /// <summary>Maximum fall speed (keeps physics stable, slow falls).</summary>
+    [Export] public float TerminalFallSpeed = 280f;
+    /// <summary>
+    /// Upward impulse applied by the jump command (pular). Apex height = v^2 / 2g
+    /// = 240^2/(2*130) ~= 221px (close to the ~216px target); slow jump.
+    /// </summary>
+    [Export] public float JumpVelocity = -240f;
+    /// <summary>
+    /// Hover: while airborne with |Velocity.Y| below this threshold, gravity is
+    /// multiplied by LevitationMultiplier, giving a light float at the jump apex.
+    /// </summary>
+    [Export] public float LevitationLimit = 30f;
+    /// <summary>Gravity multiplier applied while hovering (see LevitationLimit).</summary>
+    [Export] public float LevitationMultiplier = 0.5f;
     /// <summary>Seconds the player can still jump after walking off a ledge.</summary>
     [Export] public float CoyoteTime = 0.09f;
     /// <summary>Extra jumps allowed while airborne (1 = double jump).</summary>
@@ -267,10 +277,14 @@ public partial class Player : CharacterBody2D
         }
         // airborne with no input: keeps the current drift (reduced control, no extra friction)
 
-        // --- Adapted microgravity: a weak downward pull, capped fall speed ---
+        // --- Adapted microgravity: weak pull with a float at the jump apex ---
         if (!IsOnFloor())
         {
-            velocity.Y += MicroGravity * dt;
+            float gravity = (Mathf.Abs(velocity.Y) < LevitationLimit)
+                ? MicroGravity * LevitationMultiplier   // gentle hover near the top
+                : MicroGravity;
+
+            velocity.Y += gravity * dt;
             if (velocity.Y > TerminalFallSpeed)
                 velocity.Y = TerminalFallSpeed;
         }

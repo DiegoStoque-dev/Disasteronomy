@@ -1,13 +1,13 @@
 [gd_scene format=3 uid="uid://cxuceqvtilyc"]
 
 [ext_resource type="Texture2D" uid="uid://ctugdqoq8ln8f" path="res://Sprites/map2/LobbyMap.png" id="1_dec0e"]
-[ext_resource type="Script" path="res://Scripts/Lobby/ShipManager.cs" id="2_ship"]
+[ext_resource type="Script" uid="uid://dj2ltx26x3q7k" path="res://Scripts/Lobby/ShipManager.cs" id="2_ship"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ty0te"]
 size = Vector2(150, 11)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_w4mfu"]
-size = Vector2(89.25, 75)
+size = Vector2(97.125, 75)
 
 [node name="Lobby" type="Node2D" unique_id=1280382225]
 script = ExtResource("2_ship")
@@ -27,18 +27,18 @@ texture = ExtResource("1_dec0e")
 polygon = PackedVector2Array(7, 157, 7, 70, 37, 12.5, 267.5, 12.5, 295.5, 69, 520.5, 69, 547, 13, 781, 13, 809, 71.5, 809, 163, 811.5, 163, 815.5, 157, 814.5, 68.5, 781, 0.5, 547, 1, 519, 57.5, 296.5, 56.5, 269, 0.5, 34.5, 0.5, 1.5, 69.5, 1.5, 157)
 
 [node name="floor" type="CollisionPolygon2D" parent="StaticBody2D" unique_id=1668234188]
-polygon = PackedVector2Array(1, 157, 7, 157, 16.5, 173, 287, 172.5, 295.5, 162.5, 523, 163, 528.5, 173, 799.5, 172.5, 809.5, 163, 811.5, 163, 781, 223, 775, 218.5, 543, 219, 518.5, 170, 297, 171, 269, 222.5, 259.5, 218.5, 41, 218, 36, 223.5)
+polygon = PackedVector2Array(1, 157, 7, 157, 16.5, 173, 277, 173, 299, 163, 514, 163, 535, 173, 799.5, 172.5, 809.5, 163, 811.5, 163, 781, 223, 775, 218.5, 543, 219, 518.5, 170, 297, 171, 269, 222.5, 259.5, 218.5, 41, 218, 36, 223.5)
 
 [node name="Spawn" type="Area2D" parent="StaticBody2D" unique_id=230061798]
 position = Vector2(7, 0)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D/Spawn" unique_id=1108399218]
-position = Vector2(657, 98.5)
+position = Vector2(653, 123)
 shape = SubResource("RectangleShape2D_ty0te")
 
 [node name="Terminal" type="Area2D" parent="StaticBody2D" unique_id=294287947]
 position = Vector2(3.5, 0)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D/Terminal" unique_id=7419665]
-position = Vector2(336, 124.5)
+position = Vector2(332.0625, 124.5)
 shape = SubResource("RectangleShape2D_w4mfu")

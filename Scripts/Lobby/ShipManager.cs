@@ -315,6 +315,18 @@ public partial class ShipManager : Node2D
         player.GlobalPosition = ClampToWorld(new Vector2(x, y));
         playersRoot.AddChild(player);
 
+        // Defensive: the AnimatedSprite2D may come from the scene with an editor
+        // placeholder animation that does not exist after the character frames are
+        // rebuilt; force it onto the real idle animation to avoid any set_animation
+        // error on secondary/remote instantiations.
+        if (player.GetNodeOrNull<AnimatedSprite2D>("AnimatedSprite2D") is { } anim2D &&
+            anim2D.SpriteFrames != null &&
+            anim2D.SpriteFrames.HasAnimation("idle"))
+        {
+            anim2D.Animation = "idle";
+            anim2D.Play();
+        }
+
         if (peerId == LocalPeerId)
         {
             localPlayer = player;
