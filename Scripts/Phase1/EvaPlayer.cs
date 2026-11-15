@@ -406,7 +406,7 @@ public override void _Input(InputEvent @event)
 				UpdatePull(dt);
 			else if (!reeling)
 			{
-				Grip target = FindGripUnderArmTip();
+				Grip target = FindGripUnderArmTip(null);
 				if (target != null)
 					StartPull(null, target);
 			}
@@ -480,7 +480,7 @@ public override void _Input(InputEvent @event)
 
 		// Reach for another grip while holding this one.
 		UpdateArm();
-		Grip target = FindGripUnderArmTip();
+		Grip target = FindGripUnderArmTip(currentGrip);
 		if (target != null)
 		{
 			StartPull(currentGrip, target);
@@ -598,11 +598,15 @@ public override void _Input(InputEvent @event)
 		armTip = GlobalPosition + armDirection * armLen;
 	}
 
-	private Grip FindGripUnderArmTip()
+	private Grip FindGripUnderArmTip(Grip from)
 	{
+		Phase1Manager mgr = Manager;
 		foreach (Node node in GetTree().GetNodesInGroup("grip"))
 		{
 			if (node is not Grip g || g == currentGrip) continue;
+			// While attached to a grip, only a NEIGHBOR grip can be grabbed (one grip per
+			// grab, no skipping). While floating the player is free to grab anything in reach.
+			if (from != null && (mgr == null || !mgr.AreNeighbors(from, g))) continue;
 			if (armTip.DistanceTo(g.GlobalPosition) <= GrabRadius)
 				return g;
 		}

@@ -53,7 +53,7 @@ Intro.tscn (vídeo logo) ─▶ MainMenu.tscn ─▶ MatchSetup.tscn (lobby/room
 
 | Arquivo | Função |
 |---|---|
-| `Global.cs` | Singleton de configuração: resolução/fullscreen, volume, remap de input (salvo em `user://settings.cfg`), save da posição do jogador (`user://disasteronomy_save.dat`), sinal/estado do objetivo atual. |
+| `Global.cs` | Singleton de configuração: resolução/fullscreen, volume, remap de input (salvo em `user://settings.cfg`), save da posição do jogador (`user://disasteronomy_save.dat`), sinal/estado do objetivo atual e **progresso da Fase 1 em memória** (`Level1Completed`/`Level1Last*`, resetado por `ResetProgress()` no início de uma nova partida). |
 | `Characters.cs` | Catálogo dos 4 personagens (Ana=vermelho, Lucy=roxo, Morgana=azul, Roger=verde) + caminhos das folhas de sprite e geração de `SpriteFrames` (idle/walk/jump). |
 | `MusicManager.cs` | Autoload: música do menu (`Loops - Lonely Nightmare/...loop1.ogg`) tocando em loop com fade. |
 | `Sfx.cs` | Helper estático `Sfx.Play(node, "nome")` — toca `res://Music/sfx/<nome>.{ogg,wav,mp3}` se existir; silencioso se faltar. |
@@ -67,9 +67,9 @@ Intro.tscn (vídeo logo) ─▶ MainMenu.tscn ─▶ MatchSetup.tscn (lobby/room
 
 | Arquivo | Função |
 |---|---|
-| `Phase1Manager.cs` | **Manager da Fase 1.** Monta a nave (`ShipTexturePath = res://Sprites/map1.png`, 448x491, `ShipScale=1.5`), cria grips a partir de `GripDefs` (coordenadas em **pixels da imagem**, convertidas por `ImageToWorld`), ferramenta (pistola), marcador da CPS, minigame, HUD, telas de vitória/derrota, validação de layout no `_Ready`, completamento em solo/multiplayer. |
+| `Phase1Manager.cs` | **Manager da Fase 1.** Monta a nave (`ShipTexturePath = res://Sprites/map1.png`, 448x491, `ShipScale=1.5`), cria grips a partir de `GripDefs` (coordenadas em **pixels da imagem**, convertidas por `ImageToWorld`), ferramenta (pistola), marcador da CPS, minigame, HUD, telas de vitória/derrota, validação de layout no `_Ready`, completamento em solo/multiplayer. Também constrói o **grafo de vizinhos** (escalada de um corrimão por vez, `NeighborMaxDistance`), guarda o **relatório da Fase 1 no Global** e, na tela de sucesso, oferece **"Return to Lobby"** em vez de Next/Menu. |
 | `EvaPlayer.cs` | Controlador do astronauta: estados Attached/Floating, braço até `ArmReach=140`, corda (tether) com 3 extremidades até arrebentar, jato SAFER, câmera, limites, sprite. |
-| `Grip.cs` | Handgrip discreto (Node2D): flags `IsStart`/`IsAirlock`/`IsCps`, brilho quando em alcance/cursor. |
+| `Grip.cs` | Handgrip discreto (Node2D): flags `IsStart`/`IsAirlock`/`IsCps`. **Invisível por padrão** (`ShowVisual=false` não desenha nada; o overlay F2 liga a visualização) e entra no **grafo de vizinhos** do manager (um corrimão por vez, sem pular). |
 | `Handrail.cs` | Trilho contínuo antigo (Area2D) — **substituído por Grip; sem uso ativo.** |
 | `CpsMinigame.cs` | Minigame de calibração "gire o mouse" (3 pinos, zonas lento/bom/rápido, superaquecimento/congelamento). |
 
@@ -100,6 +100,13 @@ Intro.tscn (vídeo logo) ─▶ MainMenu.tscn ─▶ MatchSetup.tscn (lobby/room
 | `Scripts/high_level_network_handler.gd` | **Rede principal:** host/cliente ENet (porta 7777), descoberta UDP (7778), room code, nicknames, personagens, ready, kick, tutorial, start_match. |
 | `Scripts/high_level_multiplayer-spawner.gd` | Spawn/despawn de jogadores do lobby por peer id. |
 | `Scripts/high_level_ui.gd` | UI LAN antiga (lista de salas, apelido) — base do fluxo atual. |
+
+### Scripts — Lobby (`Scripts/Lobby/`)
+
+| Arquivo | Função |
+|---|---|
+| `ShipHud.cs` | HUD do lobby: painel de chat/log (sistema, diálogos, jogadores), prompt de interação do Terminal, contagem regressiva de 5 s e fade preto antes da Fase 1. |
+| `ShipManager.cs` | Manager do lobby: lê o mapa/zones (Spawn e Terminal), spawna os jogadores (o host decide e transmite via `RpcSpawnPlayer`). O Terminal é host-only: 5 s de contagem → fade → Fase 1. Depois da Fase 1, mostra o relatório (`MissionSummary`, título "LEVEL 1 REPORT") e o Continue vai para a Fase 2, ou loga "LEVEL 2 - NOT AVAILABLE YET" se a cena não existir. |
 
 ## 7. Cenas (`Scenes/`)
 
@@ -155,6 +162,17 @@ Intro.tscn (vídeo logo) ─▶ MainMenu.tscn ─▶ MatchSetup.tscn (lobby/room
 - **Rede:** autoridade no host (RPCs `AnyPeer`/`Authority`); solo funciona sem peer.
 - **`README.md` menciona `SCOPO.md`**, que ainda não existe no repositório.
 - **Build C#:** `dotnet build` na raiz é a forma mais rápida de validar sem abrir o editor.
+
+---
+
+## 10. Fase 2 (planejada)
+
+A Fase 2 começa logo após a Fase 1, dentro do DSH (Deep Space Habitat). A comunicação com o
+CAPCOM cai quase que instantaneamente e uma fumaça leve se espalha pela nave; ao vestir os
+trajes de proteção, a fumaça já cobre metade da visão. A nave vira um labirinto: o grupo se
+divide para encontrar as válvulas do ECLSS e o módulo central, restaurando o sistema e
+regulando o oxigênio. Cuidado com caixas e choques — tocar em um choque drena a sanidade;
+com sanidade baixa, criaturas/vultos começam a surgir.
 
 
 

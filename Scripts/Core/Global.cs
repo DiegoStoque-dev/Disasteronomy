@@ -64,6 +64,23 @@ public partial class Global : Node
     public Vector2 SavedPlayerPosition { get; private set; } = Vector2.Zero;
     public bool HasPlayerSave { get; private set; } = false;
 
+    // --- Level 1 progress (in memory only; never persisted, reset for a new match) ---
+    public bool Level1Completed { get; set; } = false;
+    public float Level1LastTime { get; set; } = 0f;
+    public int Level1LastStrikes { get; set; } = 0;
+    public bool Level1LastRuptured { get; set; } = false;
+    public int Level1LastSafer { get; set; } = 0;
+
+    /// <summary>Clears the in-memory Level 1 report. Called when a new match starts.</summary>
+    public void ResetProgress()
+    {
+        Level1Completed = false;
+        Level1LastTime = 0f;
+        Level1LastStrikes = 0;
+        Level1LastRuptured = false;
+        Level1LastSafer = 0;
+    }
+
     private const string SaveHeader = "DISASTERONOMY_SAVE_V1";
     private const int SaveVersion = 1;
 

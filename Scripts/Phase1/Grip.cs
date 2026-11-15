@@ -18,6 +18,12 @@ public partial class Grip : Node2D
 
 	[Export] public float Radius = 4f;
 
+	/// <summary>
+	/// When false the grip is logic-only: nothing is drawn and no redraws are queued,
+	/// so the gold art of the ship stays visible. Turned on by the F2 debug overlay.
+	/// </summary>
+	[Export] public bool ShowVisual = false;
+
 	/// <summary>Set by the manager each frame; glows when within reach of the player.</summary>
 	public bool Highlighted { get; set; }
 	/// <summary>Set by the manager each frame; glows when the cursor is over the grip.</summary>
@@ -32,6 +38,7 @@ public partial class Grip : Node2D
 
 	public override void _Process(double delta)
 	{
+		if (!ShowVisual) return;                     // logic-only grips never queue redraws.
 		bool glow = Highlighted || UnderCursor;
 		if (glow != lastGlow)
 		{
@@ -42,6 +49,7 @@ public partial class Grip : Node2D
 
 	public override void _Draw()
 	{
+		if (!ShowVisual) return;                     // invisible by default: the gold art is the handhold.
 		// Glow halo when it can be grabbed or is under the cursor.
 		if (lastGlow)
 		{
