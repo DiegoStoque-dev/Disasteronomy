@@ -11,7 +11,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_cutscene")
-NextScenePath = "res://Scenes/Phase1/Phase1.tscn"
+NextScenePath = "res://Scenes/Lobby/lobby.tscn"
 AllowSkip = true
 AutoAdvance = false
 

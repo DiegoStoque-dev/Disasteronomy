@@ -1,305 +1,420 @@
 #nullable enable
 using Godot;
 
+/// <summary>
+/// Lobby player — a 2D platformer inside the ship, built on the same logic as
+/// Sazsazan's character (Erika): horizontal A/D (mover_esquerda / mover_direita),
+/// Space jump (pular), MoveToward acceleration/friction, MoveAndSlide with
+/// IsOnFloor/IsOnCeiling, coyote time and an extra (double) jump.
+///
+/// The only difference from Earth platforming is the weaker adapted microgravity:
+/// the character still accelerates on the ground and jumps, but the downward pull
+/// is reduced so it floats up and sinks back gently, landing on the floor or
+/// stopping at the ceiling without ever passing through the geometry.
+///
+/// The node keeps the project's multiplayer conventions (nothing duplicated):
+///   - Name = peer id sets the multiplayer authority (see _EnterTree).
+///   - Added to the "network_players" group + collision exceptions between
+///     players (nobody can push another player, while the lobby floor/walls/
+///     ceiling still block — it collides on world layer 2 only).
+///   - The camera is enabled only on the locally-controlled player and follows
+///     with position smoothing, clamped to the lobby bounds via SetCameraLimits.
+///   - A MultiplayerSynchronizer replicates position/velocity + animation so the
+///     movement of other players is smooth on every machine.
+///   - While the chat input has focus, InputEnabled is false (set by the lobby
+///     manager from the LineEdit focus): typing A/D/Space only enters text and
+///     the character never moves until the focus is released.
+///
+/// Sprites come from the Characters catalog (Sprites/Traje_Protecao/...), so each
+/// character shows its own suit: idle/walk/jump, flipped by horizontal velocity.
+/// </summary>
 public partial class Player : CharacterBody2D
 {
-	private const float MoveSpeed = 260f;
-	private const float GroundAcceleration = 1800f;
-	private const float AirAcceleration = 1000f;
-	private const float GroundFriction = 2200f;
-	private const float Gravity = 980f;
-	private const float JumpVelocity = -600f;
-	private const float CoyoteTime = 0.12f;
-	private const float JumpBufferTime = 0.12f;
-	private const int SpriteFrameWidth = 48;
-	private const int SpriteFrameHeight = 64;
+    // --- Sazsazan platformer movement (adapted microgravity) ---
+    [Export] public float MoveSpeed = 300f;
+    /// <summary>Ground horizontal acceleration (responsive start).</summary>
+    [Export] public float GroundAcceleration = 1500f;
+    /// <summary>Air horizontal acceleration (reduced mid-air control).</summary>
+    [Export] public float AirAcceleration = 700f;
+    /// <summary>Ground friction when there is no input (stops the drift).</summary>
+    [Export] public float GroundFriction = 1800f;
+    /// <summary>Adapted microgravity: a weak downward pull, below Earth gravity.</summary>
+    [Export] public float MicroGravity = 300f;
+    /// <summary>Maximum fall speed (keeps physics stable).</summary>
+    [Export] public float TerminalFallSpeed = 620f;
+    /// <summary>Upward impulse applied by the jump command (pular).</summary>
+    [Export] public float JumpVelocity = -360f;
+    /// <summary>Seconds the player can still jump after walking off a ledge.</summary>
+    [Export] public float CoyoteTime = 0.09f;
+    /// <summary>Extra jumps allowed while airborne (1 = double jump).</summary>
+    [Export] public int ExtraJumps = 1;
+    /// <summary>Vertical impulse multiplier for the extra (double) jump.</summary>
+    [Export] public float DoubleJumpMultiplier = 1.2f;
+    /// <summary>Horizontal input deadzone so tiny axis noise is ignored.</summary>
+    [Export] public float InputDeadZone = 0.15f;
+    /// <summary>
+    /// Set to false while the chat input is focused (typing must not move the
+    /// character). Toggled by the lobby manager from the LineEdit focus.
+    /// </summary>
+    public bool InputEnabled = true;
 
-	private AnimatedSprite2D? sprite;
-	private Label? nicknameLabel;
-	private Node? networkHandler;
-	private Callable nicknameChangedCallable;
-	private long playerId;
-	private string facing = "right";
-	private float coyoteTimeRemaining;
-	private float jumpBufferTimeRemaining;
-	private Global? global;
+    private AnimatedSprite2D? sprite;
+    private Label? nicknameLabel;
+    private Node? networkHandler;
+    private long playerId;
+    private int characterIndex;
+    private string facing = "right";
+    private float _coyoteTimer;
+    private int _extraJumpsLeft;
 
-	public override void _Ready()
-	{
-		AddToGroup("network_players");
-		foreach (Node node in GetTree().GetNodesInGroup("network_players"))
-		{
-			if (node == this || node is not CharacterBody2D otherPlayer)
-				continue;
+    public override void _EnterTree()
+    {
+        // The project spawns players with their peer id as the node name, so
+        // the authority of a replicated player is the peer it belongs to.
+        if (long.TryParse(Name.ToString(), out long peerId))
+            SetMultiplayerAuthority((int)peerId, true);
+    }
 
-			AddCollisionExceptionWith(otherPlayer);
-			otherPlayer.AddCollisionExceptionWith(this);
-		}
+    public override void _Ready()
+    {
+        // Register the Sazsazan actions (mover_esquerda/mover_direita/pular) since
+        // Disasteronomy's input map does not define them. Done before any input is
+        // read so Input.GetAxis no longer logs "action doesn't exist" every frame
+        // and the character can actually run.
+        RegisterInputs();
 
-		nicknameLabel = GetNode<Label>("NicknameLabel");
-		networkHandler = GetNodeOrNull("/root/HighLevelNetworkHandler");
-		if (networkHandler != null)
-		{
-			nicknameChangedCallable = Callable.From<long, string>(OnPlayerNicknameChanged);
-			if (!networkHandler.IsConnected("player_nickname_changed", nicknameChangedCallable))
-				networkHandler.Connect("player_nickname_changed", nicknameChangedCallable);
-		}
+        AddToGroup("network_players");
 
-		if (long.TryParse(Name.ToString(), out playerId))
-		{
-			if (networkHandler != null)
-				UpdateNickname(networkHandler.Call("get_player_nickname", playerId).AsString());
-		}
-		else
-		{
-			// Single-player: the node is not a networked player id, just show a default name.
-			playerId = 0;
-			UpdateNickname("Player");
-		}
+        // No player can push another player, while floor/walls/ceiling still collide.
+        foreach (Node node in GetTree().GetNodesInGroup("network_players"))
+        {
+            if (node == this || node is not CharacterBody2D otherPlayer)
+                continue;
 
-		sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
-		AddJumpAnimation(
-			"jump_left",
-			"res://Sprites/The Female Adventurer - Free/The Female Adventurer - Free/Jump - NEW/Normal/Jump_Left_Down.png"
-		);
-		AddJumpAnimation(
-			"jump_right",
-			"res://Sprites/The Female Adventurer - Free/The Female Adventurer - Free/Jump - NEW/Normal/Jump_Right_Down.png"
-		);
+            AddCollisionExceptionWith(otherPlayer);
+            otherPlayer.AddCollisionExceptionWith(this);
+        }
 
-		var camera = GetNodeOrNull<Camera2D>("Camera2D");
-		if (camera != null)
-			camera.Enabled = IsMultiplayerAuthority();
+        networkHandler = GetNodeOrNull("/root/HighLevelNetworkHandler");
+        ResolveIdentity();
 
-		if (IsMultiplayerAuthority())
-			GD.Print("Controlling my character: " + Name);
+        nicknameLabel = GetNodeOrNull<Label>("NicknameLabel");
+        ApplyNickname();
 
-		ApplySavedState();
-		EnsureSinglePlayerGround();
+        BuildCharacterSprite();
+        ApplyCharacterColor();
 
-		UpdateAnimation("idle_right");
-	}
+        var camera = GetNodeOrNull<Camera2D>("Camera2D");
+        if (camera != null)
+        {
+            camera.Enabled = IsMultiplayerAuthority();
+            // Fluid camera: smooth follow instead of rigid placement.
+            camera.PositionSmoothingEnabled = true;
+            camera.PositionSmoothingSpeed = 7f;
+        }
 
-	/// <summary>
-	/// Adds a wide test platform when the scene runs standalone (single-player).
-	/// In multiplayer the level geometry is provided by the world scene instead.
-	/// </summary>
-	private void EnsureSinglePlayerGround()
-	{
-		if (Multiplayer.MultiplayerPeer != null)
-			return;
+        EnsureVelocityReplication();
 
-		Node parent = GetParent() ?? this;
-		if (parent.HasNode("SinglePlayerGround"))
-			return;
+        // Standalone (Player.tscn opened directly) still gets a small room so the
+        // platformer movement is testable without the Lobby scene.
+        EnsureStandaloneRoom();
+    }
 
-		StaticBody2D floor = new() { Name = "SinglePlayerGround" };
-		CollisionShape2D shape = new()
-		{
-			Shape = new RectangleShape2D { Size = new Vector2(2000, 40) }
-		};
-		floor.AddChild(shape);
+    /// <summary>Clamps the camera to the room and keeps the character framed.</summary>
+    public void SetCameraLimits(Rect2 room)
+    {
+        var camera = GetNodeOrNull<Camera2D>("Camera2D");
+        if (camera == null)
+            return;
 
-		// Simple visible platform so the standalone test is readable on screen.
-		Polygon2D visual = new()
-		{
-			Polygon = new[]
-			{
-				new Vector2(-1000, -20), new Vector2(1000, -20),
-				new Vector2(1000, 20), new Vector2(-1000, 20),
-			},
-			Color = new Color(0.25f, 0.30f, 0.40f),
-		};
-		floor.AddChild(visual);
+        camera.LimitLeft = (int)room.Position.X;
+        camera.LimitTop = (int)room.Position.Y;
+        camera.LimitRight = (int)room.End.X;
+        camera.LimitBottom = (int)room.End.Y;
+    }
 
-		floor.Position = new Vector2(GlobalPosition.X, GlobalPosition.Y + 140);
-		parent.AddChild(floor);
+    private void ResolveIdentity()
+    {
+        if (long.TryParse(Name.ToString(), out playerId))
+        {
+            if (networkHandler != null)
+                characterIndex = networkHandler.Call("get_player_character", (int)playerId).AsInt32();
+        }
+        else
+        {
+            playerId = 0;
+            if (networkHandler != null)
+                characterIndex = networkHandler.Call("get_player_character", (int)Multiplayer.GetUniqueId()).AsInt32();
+        }
 
-		GD.Print("[Player] Single-player test ground created.");
-	}
+        if (!Characters.IsValid(characterIndex))
+            characterIndex = 0;
+    }
 
-	/// <summary>
-	/// Restores the player's saved position (single-player) or starts a fresh run
-	/// when the main menu requested a new game.
-	/// </summary>
-	private void ApplySavedState()
-	{
-		global = GetNodeOrNull<Global>("/root/Global");
-		if (global == null)
-			return;
+    private void ApplyNickname()
+    {
+        if (nicknameLabel == null)
+            return;
 
-		if (global.NewRunRequested)
-		{
-			// Fresh run: keep the scene's default position and overwrite the old save.
-			global.NewRunRequested = false;
-			global.Save(GlobalPosition);
-			GD.Print("[Player] New run started at " + GlobalPosition);
-			return;
-		}
+        string nickname = "";
+        if (networkHandler != null)
+        {
+            if (playerId != 0)
+                nickname = networkHandler.Call("get_player_nickname", (int)playerId).AsString();
+            else
+                nickname = networkHandler.Call("get_player_nickname", (int)Multiplayer.GetUniqueId()).AsString();
+        }
 
-		if (!global.HasPlayerSave && global.HasSave())
-		{
-			global.Load();
-		}
+        if (string.IsNullOrWhiteSpace(nickname))
+            nickname = playerId == 0 ? Characters.GetName(characterIndex) : $"Player {playerId}";
 
-		if (global.HasPlayerSave)
-		{
-			GlobalPosition = global.SavedPlayerPosition;
-			GD.Print("[Player] Resumed from save at " + GlobalPosition);
-		}
-		else
-		{
-			global.Save(GlobalPosition);
-			GD.Print("[Player] No save found, created a new one at " + GlobalPosition);
-		}
-	}
+        nicknameLabel.Text = nickname;
+    }
 
-	/// <summary>Persists the player's current position through the Global autoload.</summary>
-	public void SaveState()
-	{
-		// Multiplayer positions are transient: only the single-player save is persisted.
-		if (Multiplayer.MultiplayerPeer != null)
-			return;
+    /// <summary>Colors the name tag with the character identification color.</summary>
+    private void ApplyCharacterColor()
+    {
+        if (nicknameLabel == null)
+            return;
 
-		global ??= GetNodeOrNull<Global>("/root/Global");
-		global?.Save(GlobalPosition);
-	}
+        nicknameLabel.AddThemeColorOverride("font_color", Characters.GetColor(characterIndex));
+    }
 
-	public override void _ExitTree()
-	{
-		// Persist progress before leaving the scene (single-player).
-		SaveState();
+    /// <summary>Rebuilds the animation frames from the character's suit sheets.</summary>
+    private void BuildCharacterSprite()
+    {
+        sprite = GetNodeOrNull<AnimatedSprite2D>("AnimatedSprite2D");
+        if (sprite == null)
+            return;
 
-		if (networkHandler != null &&
-			networkHandler.IsConnected("player_nickname_changed", nicknameChangedCallable))
-		{
-			networkHandler.Disconnect("player_nickname_changed", nicknameChangedCallable);
-		}
-	}
+        SpriteFrames combined = new();
+        combined.RemoveAnimation("default");
 
-	public override void _PhysicsProcess(double delta)
-	{
-		// Only restrict control when a multiplayer session is actually running.
-		// In single-player (no peer) the local player always has control.
-		if (Multiplayer.MultiplayerPeer != null && !IsMultiplayerAuthority())
-			return;
+        SpriteFrames? idle = Characters.BuildIdleFrames(characterIndex);
+        SpriteFrames? walk = Characters.BuildWalkFrames(characterIndex);
+        SpriteFrames? jump = Characters.BuildJumpFrames(characterIndex);
 
-		float horizontal = Input.GetAxis("ui_left", "ui_right");
-		if (Mathf.Abs(horizontal) < 0.01f)
-			horizontal = Input.GetAxis("move_left", "move_right");
+        MergeAnimation(combined, idle, "idle");
+        MergeAnimation(combined, walk, "walk");
+        MergeAnimation(combined, jump, "jump");
 
-		if (Mathf.Abs(horizontal) > 0.01f)
-			facing = horizontal < 0 ? "left" : "right";
+        if (!combined.HasAnimation("idle"))
+            combined = new SpriteFrames(); // no sheets found: keep a visible (empty) placeholder
 
-		float frameDelta = (float)delta;
-		bool onFloor = IsOnFloor();
-		coyoteTimeRemaining = onFloor
-			? CoyoteTime
-			: Mathf.Max(0, coyoteTimeRemaining - frameDelta);
+        sprite.SpriteFrames = combined;
+        sprite.Play("idle");
+        sprite.FlipH = facing == "left";
+    }
 
-		if (Input.IsActionJustPressed("jump"))
-			jumpBufferTimeRemaining = JumpBufferTime;
-		else
-			jumpBufferTimeRemaining = Mathf.Max(0, jumpBufferTimeRemaining - frameDelta);
+    private static void MergeAnimation(SpriteFrames target, SpriteFrames? source, string animationName)
+    {
+        if (source == null || !source.HasAnimation(animationName))
+            return;
 
-		float targetSpeed = horizontal * MoveSpeed;
-		float acceleration = onFloor ? GroundAcceleration : AirAcceleration;
-		float horizontalChange = Mathf.Abs(horizontal) < 0.01f && onFloor
-			? GroundFriction
-			: acceleration;
-		float velocityY = Velocity.Y;
+        target.AddAnimation(animationName);
+        target.SetAnimationSpeed(animationName, source.GetAnimationSpeed(animationName));
+        target.SetAnimationLoopMode(animationName, source.GetAnimationLoopMode(animationName));
 
-		if (onFloor && velocityY > 0)
-			velocityY = 0;
-		else if (!onFloor)
-			velocityY += Gravity * frameDelta;
+        int frameCount = source.GetFrameCount(animationName);
+        for (int i = 0; i < frameCount; i++)
+            target.AddFrame(animationName, source.GetFrameTexture(animationName, i));
+    }
 
-		if (jumpBufferTimeRemaining > 0 && coyoteTimeRemaining > 0)
-		{
-			velocityY = JumpVelocity;
-			jumpBufferTimeRemaining = 0;
-			coyoteTimeRemaining = 0;
-		}
+    /// <summary>
+    /// The MultiplayerSynchronizer (from Player.tscn) replicates position and
+    /// sprite animation. Velocity is added too so remote players interpolate
+    /// smoothly instead of snapping.
+    /// </summary>
+    private void EnsureVelocityReplication()
+    {
+        var sync = GetNodeOrNull<MultiplayerSynchronizer>("MultiplayerSynchronizer");
+        if (sync == null)
+            return;
 
-		Velocity = new Vector2(
-			Mathf.MoveToward(Velocity.X, targetSpeed, horizontalChange * frameDelta),
-			velocityY
-		);
-		MoveAndSlide();
+        var config = sync.ReplicationConfig ?? new SceneReplicationConfig();
+        var velocityPath = new NodePath(".:velocity");
+        config.AddProperty(velocityPath);
+        config.PropertySetReplicationMode(velocityPath, SceneReplicationConfig.ReplicationMode.Always);
+        sync.ReplicationConfig = config;
+    }
 
-		if (!IsOnFloor())
-			UpdateAnimation("jump_" + facing);
-		else if (Mathf.Abs(Velocity.X) > 1f)
-			UpdateAnimation("walk_" + facing);
-		else
-			UpdateAnimation("idle_" + facing);
-	}
+    /// <summary>
+    /// Platformer physics mirroring Sazsazan's scheme, under adapted microgravity:
+    ///   - mover_esquerda / mover_direita (A/D): MoveToward with ground/air
+    ///     acceleration and ground friction (platformer, responsive stop).
+    ///   - pular (Space): jump impulse with coyote time and a double jump; only
+    ///     reads input while InputEnabled (chat typing must not move the player).
+    ///   - MicroGravity: a weak downward pull, capped at TerminalFallSpeed, so the
+    ///     character floats up and sinks back gently (microgravity feel).
+    ///   - MoveAndSlide + floor/ceiling: the floor swallows the downward speed and
+    ///     the ceiling stops the upward speed — never passes through geometry.
+    ///   - While the chat has focus (InputEnabled == false) no gameplay input is
+    ///     read, gravity still brings the character down, and movement resumes the
+    ///     moment the focus is released.
+    /// </summary>
+    public override void _PhysicsProcess(double delta)
+    {
+        // Only the controlling peer moves its own character; remote players are
+        // interpolated by the MultiplayerSynchronizer (pushing here would jitter).
+        if (Multiplayer.HasMultiplayerPeer() && !IsMultiplayerAuthority())
+            return;
 
-	private void AddJumpAnimation(string animationName, string texturePath)
-	{
-		if (sprite == null)
-			return;
+        float dt = (float)delta;
 
-		SpriteFrames frames = sprite.SpriteFrames;
-		if (frames.HasAnimation(animationName))
-			return;
+        // --- Horizontal input (mover_esquerda / mover_direita), blocked by chat ---
+        float horizontal = 0f;
+        if (InputEnabled)
+            horizontal = Input.GetAxis("mover_esquerda", "mover_direita");
 
-		Texture2D texture = GD.Load<Texture2D>(texturePath);
-		if (texture == null || texture.GetWidth() % SpriteFrameWidth != 0 ||
-			texture.GetHeight() < SpriteFrameHeight)
-		{
-			GD.PushError($"Animation texture {animationName} is missing or has invalid dimensions: {texturePath}");
-			return;
-		}
+        if (Mathf.Abs(horizontal) < InputDeadZone)
+            horizontal = 0f;
 
-		frames.AddAnimation(animationName);
-		frames.SetAnimationSpeed(animationName, 8f);
-		frames.SetAnimationLoopMode(animationName, SpriteFrames.LoopMode.Linear);
-		int frameCount = texture.GetWidth() / SpriteFrameWidth;
-		for (int index = 0; index < frameCount; index++)
-		{
-			var atlas = new AtlasTexture
-			{
-				Atlas = texture,
-				Region = new Rect2(
-					index * SpriteFrameWidth,
-					0,
-					SpriteFrameWidth,
-					SpriteFrameHeight
-				)
-			};
-			frames.AddFrame(animationName, atlas);
-		}
-	}
+        if (Mathf.Abs(horizontal) > 0.01f)
+            facing = horizontal < 0f ? "left" : "right";
 
-	private void UpdateAnimation(string animationName)
-	{
-		if (sprite == null)
-			return;
+        Vector2 velocity = Velocity;
 
-		if (sprite.Animation != animationName)
-			sprite.Play(animationName);
-	}
+        // --- Horizontal acceleration / friction (Sazsazan scheme) ---
+        if (Mathf.Abs(horizontal) > 0.01f)
+        {
+            float acceleration = IsOnFloor() ? GroundAcceleration : AirAcceleration;
+            velocity.X = Mathf.MoveToward(velocity.X, horizontal * MoveSpeed, acceleration * dt);
+        }
+        else if (IsOnFloor())
+        {
+            velocity.X = Mathf.MoveToward(velocity.X, 0f, GroundFriction * dt);
+        }
+        // airborne with no input: keeps the current drift (reduced control, no extra friction)
 
-	private void OnPlayerNicknameChanged(long changedPlayerId, string nickname)
-	{
-		if (changedPlayerId == playerId)
-			UpdateNickname(nickname);
-	}
+        // --- Adapted microgravity: a weak downward pull, capped fall speed ---
+        if (!IsOnFloor())
+        {
+            velocity.Y += MicroGravity * dt;
+            if (velocity.Y > TerminalFallSpeed)
+                velocity.Y = TerminalFallSpeed;
+        }
 
-	private void UpdateNickname(string nickname)
-	{
-		if (nicknameLabel == null)
-			return;
+        // --- Coyote timer / jump counters ---
+        if (IsOnFloor())
+        {
+            _coyoteTimer = CoyoteTime;
+            _extraJumpsLeft = ExtraJumps;
+        }
+        else
+        {
+            _coyoteTimer -= dt;
+        }
 
-		nicknameLabel.Text = string.IsNullOrWhiteSpace(nickname)
-			? $"Player {playerId}"
-			: nickname;
-	}
+        // --- Jump (pular): normal (ground/coyote) or extra (double) jump ---
+        if (InputEnabled && Input.IsActionJustPressed("pular"))
+        {
+            if (IsOnFloor() || _coyoteTimer > 0f)
+            {
+                velocity.Y = JumpVelocity;
+                _coyoteTimer = 0f;
+            }
+            else if (_extraJumpsLeft > 0)
+            {
+                velocity.Y = JumpVelocity * DoubleJumpMultiplier;
+                _extraJumpsLeft--;
+            }
+        }
 
-	public override void _EnterTree()
-	{
-		if (int.TryParse(Name.ToString(), out int peerId))
-			SetMultiplayerAuthority(peerId, true);
-	}
+        Velocity = velocity;
+        MoveAndSlide();
+
+        // --- Floor / ceiling response (never pass through geometry) ---
+        if (IsOnFloor() && Velocity.Y > 0f)
+            Velocity = new Vector2(Velocity.X, 0f);
+        else if (IsOnCeiling() && Velocity.Y < 0f)
+            Velocity = new Vector2(Velocity.X, 0f);
+
+        UpdateVisuals();
+    }
+
+    private void UpdateVisuals()
+    {
+        if (sprite == null)
+            return;
+
+        if (Mathf.Abs(Velocity.X) > 6f)
+            facing = Velocity.X < 0f ? "left" : "right";
+
+        sprite.FlipH = facing == "left";
+
+        string animation =
+            Mathf.Abs(Velocity.Y) > 45f ? "jump" :
+            Mathf.Abs(Velocity.X) > 15f ? "walk" :
+            "idle";
+
+        if (sprite.Animation != animation)
+            sprite.Play(animation);
+    }
+
+    /// <summary>
+    /// When Player.tscn runs standalone (MainMenu legacy path / solo test) build a
+    /// small room so the platformer movement has floor, ceiling and walls. Skipped
+    /// when a world already exists (the Lobby StaticBody2D, ShipBounds or Phase 1).
+    /// </summary>
+    private void EnsureStandaloneRoom()
+    {
+        if (Multiplayer.HasMultiplayerPeer())
+            return;
+
+        if (GetTree().CurrentScene != null)
+        {
+            if (GetTree().CurrentScene.FindChild("ShipBounds", recursive: true, owned: false) != null)
+                return;
+            if (GetTree().CurrentScene.FindChild("StaticBody2D", recursive: true, owned: false) != null)
+                return;
+        }
+
+        Node parent = GetParent() ?? this;
+
+        var room = new StaticBody2D { Name = "ShipBounds", CollisionLayer = 2, CollisionMask = 0 };
+        parent.AddChild(room);
+
+        AddWall(room, new Vector2(0f, 200f), new Vector2(900f, 24f));      // floor
+        AddWall(room, new Vector2(0f, -200f), new Vector2(900f, 24f));     // ceiling
+        AddWall(room, new Vector2(-450f, 0f), new Vector2(24f, 424f));     // left wall
+        AddWall(room, new Vector2(450f, 0f), new Vector2(24f, 424f));      // right wall
+    }
+
+    private static void AddWall(StaticBody2D room, Vector2 center, Vector2 size)
+    {
+        var body = new StaticBody2D { Position = center, CollisionLayer = 2, CollisionMask = 0 };
+        room.AddChild(body);
+
+        var shape = new CollisionShape2D
+        {
+            Shape = new RectangleShape2D { Size = size },
+        };
+        body.AddChild(shape);
+    }
+
+    /// <summary>Registers the Sazsazan input actions if they do not exist yet.</summary>
+    private void RegisterInputs()
+    {
+        EnsureAction("mover_esquerda", KeyEvents(Key.A, Key.Left));
+        EnsureAction("mover_direita", KeyEvents(Key.D, Key.Right));
+        EnsureAction("pular", KeyEvents(Key.Space));
+    }
+
+    private static void EnsureAction(string action, Godot.Collections.Array<InputEvent> events)
+    {
+        if (InputMap.HasAction(action))
+            return;
+
+        InputMap.AddAction(action);
+        foreach (InputEvent ev in events)
+            InputMap.ActionAddEvent(action, ev);
+    }
+
+    private static Godot.Collections.Array<InputEvent> KeyEvents(params Key[] keys)
+    {
+        Godot.Collections.Array<InputEvent> events = new();
+        foreach (Key key in keys)
+            events.Add(new InputEventKey { PhysicalKeycode = key, Pressed = true });
+        return events;
+    }
 }
