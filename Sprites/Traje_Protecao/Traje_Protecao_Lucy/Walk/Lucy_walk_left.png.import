@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dxfdukfnfxb6x"
-path="res://.godot/imported/Lucy_walk_left.png-8cb612579ac59625de8f14ca6fc0a761.ctex"
+path="res://.godot/imported/Lucy_walk_left.png-59164e0feccedf4911e424a908a0253b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Protecao_Lucy/Walk/Lucy_walk_left.png"
-dest_files=["res://.godot/imported/Lucy_walk_left.png-8cb612579ac59625de8f14ca6fc0a761.ctex"]
+source_file="res://Sprites/Traje_Protecao/Traje_Protecao_Lucy/Walk/Lucy_walk_left.png"
+dest_files=["res://.godot/imported/Lucy_walk_left.png-59164e0feccedf4911e424a908a0253b.ctex"]
 
 [params]
 

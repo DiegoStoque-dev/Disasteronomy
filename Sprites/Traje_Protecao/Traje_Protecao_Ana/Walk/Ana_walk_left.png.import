@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c40hprqvgtnv"
-path="res://.godot/imported/Ana_walk_left.png-f31ccc26788d03bdccaff5b61db13ce5.ctex"
+path="res://.godot/imported/Ana_walk_left.png-d9f0a6146b05e34239e5f4109e40583d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Protecao_Ana/Walk/Ana_walk_left.png"
-dest_files=["res://.godot/imported/Ana_walk_left.png-f31ccc26788d03bdccaff5b61db13ce5.ctex"]
+source_file="res://Sprites/Traje_Protecao/Traje_Protecao_Ana/Walk/Ana_walk_left.png"
+dest_files=["res://.godot/imported/Ana_walk_left.png-d9f0a6146b05e34239e5f4109e40583d.ctex"]
 
 [params]
 

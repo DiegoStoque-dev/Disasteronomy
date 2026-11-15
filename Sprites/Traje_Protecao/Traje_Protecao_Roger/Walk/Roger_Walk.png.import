@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bqishgeaqshgn"
-path="res://.godot/imported/Roger_Walk.png-2415fcae6af1697ad737035d0cb8e0f2.ctex"
+path="res://.godot/imported/Roger_Walk.png-cbdf30b4aaa246beb93f44b1b4b47dc9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Protecao_Roger/Walk/Roger_Walk.png"
-dest_files=["res://.godot/imported/Roger_Walk.png-2415fcae6af1697ad737035d0cb8e0f2.ctex"]
+source_file="res://Sprites/Traje_Protecao/Traje_Protecao_Roger/Walk/Roger_Walk.png"
+dest_files=["res://.godot/imported/Roger_Walk.png-cbdf30b4aaa246beb93f44b1b4b47dc9.ctex"]
 
 [params]
 

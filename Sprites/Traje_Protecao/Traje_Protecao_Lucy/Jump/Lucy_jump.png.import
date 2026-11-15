@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://0qblntb6y1hu"
-path="res://.godot/imported/Lucy_jump.png-1857bab72f3477cda8282e1790e14887.ctex"
+path="res://.godot/imported/Lucy_jump.png-4ebe5d3326d46283a5332794e69a6399.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Protecao_Lucy/Jump/Lucy_jump.png"
-dest_files=["res://.godot/imported/Lucy_jump.png-1857bab72f3477cda8282e1790e14887.ctex"]
+source_file="res://Sprites/Traje_Protecao/Traje_Protecao_Lucy/Jump/Lucy_jump.png"
+dest_files=["res://.godot/imported/Lucy_jump.png-4ebe5d3326d46283a5332794e69a6399.ctex"]
 
 [params]
 

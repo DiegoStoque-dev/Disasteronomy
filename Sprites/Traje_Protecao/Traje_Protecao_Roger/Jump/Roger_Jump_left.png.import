@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c4ijbc0tts3v3"
-path="res://.godot/imported/Roger_Jump_left.png-bbbf0323ddcc0207e1e0bdafe1b95480.ctex"
+path="res://.godot/imported/Roger_Jump_left.png-0625acbee542eb251c89d95353ad998d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Protecao_Roger/Jump/Roger_Jump_left.png"
-dest_files=["res://.godot/imported/Roger_Jump_left.png-bbbf0323ddcc0207e1e0bdafe1b95480.ctex"]
+source_file="res://Sprites/Traje_Protecao/Traje_Protecao_Roger/Jump/Roger_Jump_left.png"
+dest_files=["res://.godot/imported/Roger_Jump_left.png-0625acbee542eb251c89d95353ad998d.ctex"]
 
 [params]
 

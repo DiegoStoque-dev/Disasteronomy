@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dqwtpwp22rrkx"
-path="res://.godot/imported/Ana_Idle.png-9a1fc202375b1a4554e3d28054588b3e.ctex"
+path="res://.godot/imported/Ana_Idle.png-87b85dc4ff6a80d396f11ceea65094e6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Protecao_Ana/Idle/Ana_Idle.png"
-dest_files=["res://.godot/imported/Ana_Idle.png-9a1fc202375b1a4554e3d28054588b3e.ctex"]
+source_file="res://Sprites/Traje_Protecao/Traje_Protecao_Ana/Idle/Ana_Idle.png"
+dest_files=["res://.godot/imported/Ana_Idle.png-87b85dc4ff6a80d396f11ceea65094e6.ctex"]
 
 [params]
 

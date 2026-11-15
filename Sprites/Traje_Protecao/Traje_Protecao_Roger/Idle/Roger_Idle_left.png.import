@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c061c40jhx6ty"
-path="res://.godot/imported/Roger_Idle_left.png-5003c150ed443ee6e0cb4b1a946b8cec.ctex"
+path="res://.godot/imported/Roger_Idle_left.png-1b5dbdb8df5bcd6f23a6ec8ed9822a7b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Protecao_Roger/Idle/Roger_Idle_left.png"
-dest_files=["res://.godot/imported/Roger_Idle_left.png-5003c150ed443ee6e0cb4b1a946b8cec.ctex"]
+source_file="res://Sprites/Traje_Protecao/Traje_Protecao_Roger/Idle/Roger_Idle_left.png"
+dest_files=["res://.godot/imported/Roger_Idle_left.png-1b5dbdb8df5bcd6f23a6ec8ed9822a7b.ctex"]
 
 [params]
 

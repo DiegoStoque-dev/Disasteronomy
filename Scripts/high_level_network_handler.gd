@@ -549,4 +549,3 @@ func host_skip_tutorial() -> void:
 @rpc("authority", "call_local", "reliable")
 func _finish_tutorial() -> void:
 	tutorial_finished.emit()
-

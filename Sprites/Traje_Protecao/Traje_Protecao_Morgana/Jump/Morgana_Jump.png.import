@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bvi2c2syg0jsw"
-path="res://.godot/imported/Morgana_Jump.png-d7d4c4b2e444f8ab3c48dbe4ec78de45.ctex"
+path="res://.godot/imported/Morgana_Jump.png-4e042fec342ed082cc58d288bf6fcde4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Protecao_Morgana/Jump/Morgana_Jump.png"
-dest_files=["res://.godot/imported/Morgana_Jump.png-d7d4c4b2e444f8ab3c48dbe4ec78de45.ctex"]
+source_file="res://Sprites/Traje_Protecao/Traje_Protecao_Morgana/Jump/Morgana_Jump.png"
+dest_files=["res://.godot/imported/Morgana_Jump.png-4e042fec342ed082cc58d288bf6fcde4.ctex"]
 
 [params]
 
