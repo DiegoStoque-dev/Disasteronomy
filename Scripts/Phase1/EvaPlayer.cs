@@ -189,7 +189,14 @@ public partial class EvaPlayer : CharacterBody2D
 
 	public override void _PhysicsProcess(double delta)
 	{
-		if (Multiplayer.HasMultiplayerPeer() && !IsMultiplayerAuthority()) return;
+		if (Multiplayer.HasMultiplayerPeer())
+		{
+			// Only the spawner-created suits (their names ARE the peer ids) simulate in
+			// multiplayer. The editor-instanced placeholder ("EvaPlayer") is a frozen dummy:
+			// if it simulated it would be the host's hidden ghost character.
+			if (!int.TryParse(Name, out _)) return;
+			if (!IsMultiplayerAuthority()) return;
+		}
 
 		float dt = (float)delta;
 		var mgr = Manager;

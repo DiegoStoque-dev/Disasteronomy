@@ -13,7 +13,8 @@ public partial class MatchSetup : Control
 {
     private const string HandlerPath = "/root/HighLevelNetworkHandler";
     private const string MainMenuScenePath = "res://Scenes/MainMenu.tscn";
-    private const string MissionScenePath = "res://Scenes/Phase1/Phase1.tscn";
+    /// <summary>First scene of the shared intro chain: Cutscene1 -> Cutscene2 -> Cutscene3 -> Phase1.</summary>
+    private const string CutsceneScenePath = "res://Scenes/Cutscenes/Cutscene1.tscn";
     private const string SpaceshipSheetPath = "res://Sprites/UI/MainMenu/main menu/spaceship sheet.png";
 
     private const int ShipFrameWidth = 384;
@@ -623,11 +624,13 @@ public partial class MatchSetup : Control
 
         _matchStarted = true;
 
-        // The host started the mission: everyone moves to Phase 1 together.
+        // The host started the mission: everyone begins the shared intro chain
+        // together (Cutscene1 -> Cutscene2 -> Cutscene3), which then leads into
+        // Phase 1. The cutscenes still play - nothing is skipped.
         if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeScene(MissionScenePath);
+            SceneTransitions.Instance.ChangeScene(CutsceneScenePath);
         else
-            GetTree().ChangeSceneToFile(MissionScenePath);
+            GetTree().ChangeSceneToFile(CutsceneScenePath);
     }
 
     private void OnBackPressed()

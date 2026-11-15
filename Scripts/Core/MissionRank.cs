@@ -5,7 +5,8 @@ using Godot;
 /// End-of-mission performance ranking (F to S) for Phase 1.
 ///
 /// Score combines:
-///   - completion time        (faster = better)
+///   - completion time        (compared to a "par time", not a flat per-second drain,
+///                             so a normal-length mission can still reach a good grade)
 ///   - tether fatigue strikes (fewer = better, rupture is a heavy penalty)
 ///   - remaining SAFER fuel   (more saved = bonus)
 ///
@@ -15,18 +16,19 @@ using Godot;
 public static class MissionRank
 {
     // --- Score weights (tuned manually, feel free to adjust) ---
-    public const float TimeBaseScore = 1000f;        // score for an instant mission
-    public const float TimeWeight = 800f;            // subtracted per second elapsed
-    public const float StressPenaltyPerStrike = 160f; // normal fatigue strike
-    public const float RupturePenalty = 600f;        // tether snapped (much heavier)
-    public const float SaferWeightPerCharge = 130f;  // bonus per remaining charge
+    public const float TimeBaseScore = 400f;          // score when the mission takes exactly ParTimeSeconds
+    public const float ParTimeSeconds = 150f;         // target EVA time (2:30); running faster scales it up
+    public const float MaxTimeRatio = 2f;             // cap on the speed bonus (never more than 2x base)
+    public const float StressPenaltyPerStrike = 120f; // normal fatigue strike
+    public const float RupturePenalty = 350f;         // tether snapped (heavy, on top of its strikes)
+    public const float SaferWeightPerCharge = 80f;    // bonus per remaining charge
 
     // --- Grade thresholds (higher is better) ---
-    public const float GradeS = 700f;
-    public const float GradeA = 560f;
-    public const float GradeB = 430f;
-    public const float GradeC = 300f;
-    public const float GradeD = 160f;
+    public const float GradeS = 850f;
+    public const float GradeA = 700f;
+    public const float GradeB = 550f;
+    public const float GradeC = 400f;
+    public const float GradeD = 250f;
     // Below GradeD => F
 
     /// <summary>Result of a single mission run.</summary>
@@ -55,13 +57,16 @@ public static class MissionRank
         bool ruptured,
         int remainingSafer)
     {
-        double score = TimeBaseScore
-                     - TimeWeight * Mathf.Max(0f, completionTimeSeconds)
-                     - StressPenaltyPerStrike * Mathf.Max(0, stressStrikes)
-                     - (ruptured ? RupturePenalty : 0f)
-                     + SaferWeightPerCharge * Mathf.Max(0, remainingSafer);
+        // Time is scaled around the par time: finish under it and score grows towards the cap,
+        // finish over it and score shrinks - but it never collapses instantly like a flat drain.
+        float timeRatio = Mathf.Clamp(ParTimeSeconds / Mathf.Max(1f, completionTimeSeconds), 0f, MaxTimeRatio);
 
-        float clamped = Mathf.Max(0f, (float)score);
+        float score = TimeBaseScore * timeRatio
+                    - StressPenaltyPerStrike * Mathf.Max(0, stressStrikes)
+                    - (ruptured ? RupturePenalty : 0f)
+                    + SaferWeightPerCharge * Mathf.Max(0, remainingSafer);
+
+        float clamped = Mathf.Max(0f, score);
         char grade = GradeFromScore(clamped);
         return new Result(clamped, grade);
     }
