@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cxuceqvtilyc"]
 
 [ext_resource type="Texture2D" uid="uid://ctugdqoq8ln8f" path="res://Sprites/map2/LobbyMap.png" id="1_dec0e"]
-[ext_resource type="Script" path="res://Scripts/Lobby/ShipManager.cs" id="2_ship"]
+[ext_resource type="Script" uid="uid://dj2ltx26x3q7k" path="res://Scripts/Lobby/ShipManager.cs" id="2_ship"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ty0te"]
 size = Vector2(150, 11)
@@ -42,3 +42,7 @@ position = Vector2(3.5, 0)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D/Terminal" unique_id=7419665]
 position = Vector2(336, 124.5)
 shape = SubResource("RectangleShape2D_w4mfu")
+
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1585614127]
+_spawnable_scenes = PackedStringArray("uid://1shx8uqhmok5")
+spawn_path = NodePath("..")
