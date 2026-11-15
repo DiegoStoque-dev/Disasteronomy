@@ -73,6 +73,22 @@ public partial class Phase1Manager : Node2D
 		if (localPlayer != null && !Multiplayer.HasMultiplayerPeer())
 			localPlayer.GlobalPosition = AirlockPosition + new Vector2(80f, 0f);
 
+		// Multiplayer: hide the editor-instanced placeholder suit (it is not a real peer -
+		// the MultiplayerSpawner creates the actual players). Otherwise a frozen duplicate
+		// astronaut floats at the world origin.
+		if (Multiplayer.HasMultiplayerPeer())
+		{
+			foreach (Node child in GetChildren())
+				if (child is EvaPlayer p && !int.TryParse(p.Name, out _))
+					p.Visible = false;
+		}
+
+		// Host safety: the MultiplayerSpawner auto-spawns nodes when a peer connects, but the
+		// server itself may never get one. Guarantee the SERVER has a controllable player so the
+		// phase can actually be completed in multiplayer. Clients wait for the spawner replication.
+		if (Multiplayer.HasMultiplayerPeer() && Multiplayer.IsServer() && FindLocalPlayer() == null)
+			SpawnSoloPlayer();
+
 		UpdateObjective();
 		PauseMenu.Attach(this, Phase1Controls);
 		BriefingScreen.Open(this, "PHASE 1 - VACUUM CALIBRATION", Phase1Briefing, Phase1Controls);
@@ -168,11 +184,17 @@ public partial class Phase1Manager : Node2D
 		spawner.Spawned += OnPlayerSpawned;
 	}
 
-	/// <summary>Places multiplayer-spawned players near the airlock (inside tether reach) instead of the world origin.</summary>
+	/// <summary>Places multiplayer-spawned players near the airlock, spread by peer id so they
+	/// never spawn stacked on top of each other (each gets its own clear slot).</summary>
 	private void OnPlayerSpawned(Node node)
 	{
 		if (node is EvaPlayer p && Multiplayer.HasMultiplayerPeer())
-			p.GlobalPosition = AirlockPosition + new Vector2(80f, 0f);
+		{
+			int peerId = 1;
+			if (int.TryParse(p.Name, out int id)) peerId = id;
+			p.GlobalPosition = AirlockPosition + new Vector2(80f + (peerId - 1) * 110f, (peerId - 1) * 90f);
+			GD.Print($"Phase1: spawned player {peerId} at {p.GlobalPosition}");
+		}
 	}
 
 	private void SetupHud()
@@ -249,8 +271,10 @@ public partial class Phase1Manager : Node2D
 
 	private void SpawnSoloPlayer()
 	{
+		// Skip the editor-instanced placeholder (hidden in multiplayer) so the real host
+		// player is still created.
 		foreach (Node child in GetChildren())
-			if (child is EvaPlayer) return;
+			if (child is EvaPlayer p && p.Visible) return;
 		var player = new EvaPlayer();
 		player.Name = "1";
 		player.Position = AirlockPosition + new Vector2(80f, 0f);

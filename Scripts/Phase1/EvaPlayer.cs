@@ -10,8 +10,8 @@ public partial class EvaPlayer : CharacterBody2D
 	public bool IsTetherBroken => ropeState == RopeState.BrokenArm;
 	public bool IsRuptured => isRuptured;
 
-	[Export] public float MaxDriftSpeed = 80f;
-	[Export] public float SuitAcceleration = 28f; // RCS linear accel toward input speed (px/s²)
+	[Export] public float MaxDriftSpeed = 65f;       // velocidade cruzeiro do RCS (média, sem deriva extrema)
+	[Export] public float SuitAcceleration = 150f; // resposta imediata: atinge o teto em ~0.4s
 	[Export] public float DriftDrag = 0.6f;      // light linear drag per second when no RCS input
 	[Export] public int MaxFatigueStrikes = 3;
 	[Export] public float CriticalSnapLoadSpeed = 95f; // outward radial speed (px/s) at the taut transition that counts as a critical stress hit
