@@ -1,6 +1,5 @@
-[gd_scene format=3 uid="uid://d1q8p8cfr6pf1"]
+﻿[gd_scene format=3 uid="uid://d1q8p8cfr6pf1"]
 
-[ext_resource type="Script" uid="uid://csvxj2vms1cww" path="res://Scripts/UI/MainMenu.cs" id="1_fh7cp"]
 [ext_resource type="Texture2D" uid="uid://cqawem11hpv6k" path="res://Sprites/UI/MainMenu/main menu/stars sheet.png" id="1_loo7a"]
 [ext_resource type="Texture2D" uid="uid://by12c8tkku7q1" path="res://Sprites/UI/MainMenu/botoes/start.png" id="2_8um5k"]
 [ext_resource type="Texture2D" uid="uid://bss6kj00g4pva" path="res://Sprites/UI/MainMenu/disasteronomy att.png" id="2_cmrfp"]
@@ -13,8 +12,7 @@
 [ext_resource type="Texture2D" uid="uid://bm67iy0mcy4n3" path="res://Sprites/UI/MainMenu/botoes/new game.png" id="8_cmrfp"]
 [ext_resource type="Texture2D" uid="uid://c73q8hxedn42j" path="res://Sprites/UI/MainMenu/botoes/load game.png" id="9_rrcx7"]
 [ext_resource type="Texture2D" uid="uid://djchtnmjq65tp" path="res://Sprites/UI/MainMenu/botoes/join.png" id="12_fh7cp"]
-
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_koqhg"]
+[ext_resource type="Script" uid="uid://bxnifvm0uvbt0" path="res://Scripts/UI/MainMenu.cs" id="13_fh7cp"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ydj5n"]
 atlas = ExtResource("1_loo7a")
@@ -625,7 +623,13 @@ layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
-script = ExtResource("1_fh7cp")
+script = ExtResource("13_fh7cp")
+GameScenePath = "res://Scenes/Player.tscn"
+CreditsScenePath = "res://Scenes/CreditsMenu.tscn"
+MultiplayerScenePath = "res://Scenes/multiplayer.tscn"
+MenuContainerPath = NodePath("MenuContainer")
+MenuStartPath = NodePath("MenuStart")
+MenuMultiplayerPath = NodePath("MenuMultiplayer")
 
 [node name="background" type="TextureRect" parent="." unique_id=1180550868]
 layout_mode = 0
@@ -634,7 +638,6 @@ offset_top = 6.9999995
 offset_right = 11694.999
 offset_bottom = 6636.9995
 scale = Vector2(0.1, 0.1)
-texture = SubResource("CompressedTexture2D_koqhg")
 
 [node name="Stars" type="AnimatedSprite2D" parent="background" unique_id=1033761907]
 position = Vector2(5609.9995, 3169.9993)
@@ -659,66 +662,6 @@ sprite_frames = SubResource("SpriteFrames_ty0te")
 animation = &"Spaceship"
 autoplay = "Spaceship"
 frame_progress = 0.23412949
-
-[node name="MenuOptions" type="VBoxContainer" parent="." unique_id=999999999]
-visible = false
-custom_minimum_size = Vector2(600, 500)
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -2146.9998
-offset_top = -515.4999
-offset_right = 2147.0002
-offset_bottom = 515.5001
-grow_horizontal = 2
-grow_vertical = 2
-alignment = 1
-
-[node name="OptionsTitle" type="Label" parent="MenuOptions" unique_id=999999998]
-custom_minimum_size = Vector2(0, 60)
-layout_mode = 2
-text = "Opções"
-horizontal_alignment = 1
-
-[node name="HSeparatorOpt" type="HSeparator" parent="MenuOptions" unique_id=999999997]
-layout_mode = 2
-
-[node name="LabelRes" type="Label" parent="MenuOptions" unique_id=999999996]
-layout_mode = 2
-text = "Resolução:"
-
-[node name="ResolutionDropdown" type="OptionButton" parent="MenuOptions" unique_id=999999995]
-custom_minimum_size = Vector2(200, 40)
-layout_mode = 2
-selected = 1
-item_count = 4
-popup/item_0/id = 0
-popup/item_1/id = 1
-popup/item_2/id = 2
-popup/item_3/id = 3
-
-[node name="LabelVolume" type="Label" parent="MenuOptions" unique_id=999999994]
-layout_mode = 2
-text = "Volume:"
-
-[node name="VolumeSlider" type="HSlider" parent="MenuOptions" unique_id=999999993]
-custom_minimum_size = Vector2(200, 30)
-layout_mode = 2
-max_value = 1.0
-step = 0.1
-value = 1.0
-
-[node name="LabelKeys" type="Label" parent="MenuOptions" unique_id=999999992]
-layout_mode = 2
-text = "Teclas: WASD = Mover | Espaço = Pular | V = Voz"
-
-[node name="BtnOptionsBack" type="TextureButton" parent="MenuOptions" unique_id=999999991]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("6_loo7a")
 
 [node name="MenuContainer" type="VBoxContainer" parent="." unique_id=840968932]
 layout_mode = 1
@@ -755,16 +698,12 @@ texture_normal = ExtResource("6_loo7a")
 
 [node name="MenuStart" type="VBoxContainer" parent="." unique_id=479540603]
 visible = false
-custom_minimum_size = Vector2(450, 350)
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-grow_horizontal = 2
-grow_vertical = 2
-alignment = 1
+offset_left = 93.0
+offset_top = 243.0
+offset_right = 8692.999
+offset_bottom = 7463.0
+scale = Vector2(0.05, 0.05)
 
 [node name="BtnLoad" type="TextureButton" parent="MenuStart" unique_id=1331457605]
 layout_mode = 2
@@ -783,16 +722,12 @@ texture_normal = ExtResource("6_loo7a")
 
 [node name="MenuMultiplayer" type="VBoxContainer" parent="." unique_id=800935915]
 visible = false
-custom_minimum_size = Vector2(500, 400)
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-grow_horizontal = 2
-grow_vertical = 2
-alignment = 1
+offset_left = 93.0
+offset_top = 243.0
+offset_right = 8692.999
+offset_bottom = 7463.0
+scale = Vector2(0.05, 0.05)
 
 [node name="BtnCreate" type="TextureButton" parent="MenuMultiplayer" unique_id=297416595]
 layout_mode = 2

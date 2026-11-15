@@ -1,12 +1,26 @@
-[gd_scene format=3 uid="uid://bhx58cq6q0ph3"]
+[gd_scene load_steps=7 format=3 uid="uid://bhx58cq6q0ph3"]
 
-[ext_resource type="Script" uid="uid://dffv2w3iafu35" path="res://Scripts/high_level_ui.gd" id="1_q0ldm"]
+[ext_resource type="Script" uid="uid://dkpyp1ntfkerg" path="res://Scripts/UI/MultiplayerMenu.cs" id="1_q0ldm"]
 [ext_resource type="Script" uid="uid://ce82c6twd42dp" path="res://Scripts/VoiceChat.cs" id="2_eumxw"]
 [ext_resource type="Script" uid="uid://bevibcwm81v12" path="res://Scripts/high_level_multiplayer-spawner.gd" id="3_spawner"]
 
 [sub_resource type="AudioStreamMicrophone" id="AudioStreamMicrophone_j3pel"]
 
-[node name="Multiplayer" type="Control" unique_id=870880779]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
+size = Vector2(3000, 40)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 24.0
+content_margin_top = 20.0
+content_margin_right = 24.0
+content_margin_bottom = 20.0
+bg_color = Color(0.08, 0.08, 0.12, 0.96)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="Multiplayer" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -15,57 +29,166 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_q0ldm")
 
-[node name="PlayerSpawner" type="MultiplayerSpawner" parent="." unique_id=50335163]
+[node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("uid://1shx8uqhmok5")
 spawn_path = NodePath("..")
 script = ExtResource("3_spawner")
 
-[node name="VoiceChat" type="Node" parent="." unique_id=604433106]
+[node name="VoiceChat" type="Node" parent="."]
 script = ExtResource("2_eumxw")
 
-[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=153316616]
+[node name="WorldGround" type="StaticBody2D" parent="."]
+position = Vector2(0, 520)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer" unique_id=949503320]
-offset_right = 280.0
-offset_bottom = 430.0
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WorldGround"]
+shape = SubResource("RectangleShape2D_ground")
 
-[node name="Server" type="Button" parent="CanvasLayer/VBoxContainer" unique_id=1208468996]
+[node name="Visual" type="Polygon2D" parent="WorldGround"]
+color = Color(0.25, 0.3, 0.4, 1)
+polygon = PackedVector2Array(-1500, -20, 1500, -20, 1500, 20, -1500, 20)
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Backdrop" type="ColorRect" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Center" type="CenterContainer" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="CanvasLayer/Center"]
+custom_minimum_size = Vector2(500, 0)
 layout_mode = 2
-text = "Criar sala"
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="Nickname" type="LineEdit" parent="CanvasLayer/VBoxContainer" unique_id=239120492]
+[node name="Root" type="VBoxContainer" parent="CanvasLayer/Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="CanvasLayer/Center/Panel/Root"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "MULTIPLAYER"
+horizontal_alignment = 1
+
+[node name="VoiceIndicator" type="Button" parent="CanvasLayer/Center/Panel/Root"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "Microfone Desligado"
+
+[node name="MenuView" type="VBoxContainer" parent="CanvasLayer/Center/Panel/Root"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Nickname" type="LineEdit" parent="CanvasLayer/Center/Panel/Root/MenuView"]
 layout_mode = 2
 placeholder_text = "Seu apelido"
 max_length = 16
 
-[node name="RoomCode" type="LineEdit" parent="CanvasLayer/VBoxContainer" unique_id=1605876053]
+[node name="CreateRoom" type="Button" parent="CanvasLayer/Center/Panel/Root/MenuView"]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-placeholder_text = "Código (vazio gera um)"
+text = "Criar sala"
 
-[node name="FindRooms" type="Button" parent="CanvasLayer/VBoxContainer" unique_id=1844959660]
+[node name="JoinRoom" type="Button" parent="CanvasLayer/Center/Panel/Root/MenuView"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Entrar em uma sala"
+
+[node name="MenuStatus" type="Label" parent="CanvasLayer/Center/Panel/Root/MenuView"]
+layout_mode = 2
+text = "Escolha criar ou entrar em uma sala."
+autowrap_mode = 2
+
+[node name="Back" type="Button" parent="CanvasLayer/Center/Panel/Root/MenuView"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "VOLTAR"
+
+
+[node name="CreateView" type="VBoxContainer" parent="CanvasLayer/Center/Panel/Root"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CreateTitle" type="Label" parent="CanvasLayer/Center/Panel/Root/CreateView"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "SALA CRIADA"
+horizontal_alignment = 1
+
+[node name="RoomCodeLabel" type="Label" parent="CanvasLayer/Center/Panel/Root/CreateView"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Código da sala: ------"
+horizontal_alignment = 1
+
+[node name="PlayersTitle" type="Label" parent="CanvasLayer/Center/Panel/Root/CreateView"]
+layout_mode = 2
+text = "Jogadores conectados"
+
+[node name="PlayerList" type="ItemList" parent="CanvasLayer/Center/Panel/Root/CreateView"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+
+[node name="CreateStatus" type="Label" parent="CanvasLayer/Center/Panel/Root/CreateView"]
+layout_mode = 2
+text = "Aguardando jogadores..."
+autowrap_mode = 2
+
+[node name="EnterGame" type="Button" parent="CanvasLayer/Center/Panel/Root/CreateView"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "ENTRAR NO JOGO"
+
+[node name="CreateBack" type="Button" parent="CanvasLayer/Center/Panel/Root/CreateView"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "VOLTAR"
+
+[node name="JoinView" type="VBoxContainer" parent="CanvasLayer/Center/Panel/Root"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FindRooms" type="Button" parent="CanvasLayer/Center/Panel/Root/JoinView"]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 text = "Buscar salas na rede"
 
-[node name="RoomList" type="ItemList" parent="CanvasLayer/VBoxContainer" unique_id=1948898869]
-custom_minimum_size = Vector2(0, 120)
+[node name="RoomList" type="ItemList" parent="CanvasLayer/Center/Panel/Root/JoinView"]
+custom_minimum_size = Vector2(0, 140)
 layout_mode = 2
 
-[node name="RoomStatus" type="Label" parent="CanvasLayer/VBoxContainer" unique_id=350203457]
+[node name="RoomCode" type="LineEdit" parent="CanvasLayer/Center/Panel/Root/JoinView"]
 layout_mode = 2
-text = "Digite um código ou busque salas."
+placeholder_text = "Código da sala (6 dígitos)"
 
-[node name="Client" type="Button" parent="CanvasLayer/VBoxContainer" unique_id=1737931754]
+[node name="JoinStatus" type="Label" parent="CanvasLayer/Center/Panel/Root/JoinView"]
+layout_mode = 2
+text = "Busque salas ou digite um código."
+autowrap_mode = 2
+
+[node name="Client" type="Button" parent="CanvasLayer/Center/Panel/Root/JoinView"]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 text = "Entrar na sala"
 
-[node name="VoiceIndicator" type="Button" parent="CanvasLayer/VBoxContainer" unique_id=2058704355]
+[node name="JoinBack" type="Button" parent="CanvasLayer/Center/Panel/Root/JoinView"]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-text = "Microfone Desligado"
+text = "VOLTAR"
 
-[node name="Microphone" type="AudioStreamPlayer" parent="." unique_id=2001754299]
+[node name="Microphone" type="AudioStreamPlayer" parent="."]
 stream = SubResource("AudioStreamMicrophone_j3pel")
 volume_db = 24.0
-
-[connection signal="pressed" from="CanvasLayer/VBoxContainer/Server" to="." method="_on_server_pressed"]
-[connection signal="pressed" from="CanvasLayer/VBoxContainer/FindRooms" to="." method="_on_search_rooms_pressed"]
-[connection signal="pressed" from="CanvasLayer/VBoxContainer/Client" to="." method="_on_client_pressed"]

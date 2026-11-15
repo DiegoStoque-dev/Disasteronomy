@@ -21,9 +21,11 @@ public partial class VoiceChat : Node
 	{
 		GD.Print("VOICE CHAT INICIADO!");
 
-		voiceIndicator = GetNodeOrNull<Button>(
-			"../CanvasLayer/VBoxContainer/VoiceIndicator"
-		);
+		// The indicator lives in the lobby panel, not under this node, so look it up
+		// from the scene root as well (FindChild only searches this node's own subtree).
+		voiceIndicator = GetNodeOrNull<Button>("../CanvasLayer/Center/Panel/VBoxContainer/VoiceIndicator")
+			?? GetNodeOrNull<Button>("../CanvasLayer/VBoxContainer/VoiceIndicator")
+			?? GetParent()?.FindChild("VoiceIndicator", recursive: true, owned: false) as Button;
 		microphonePlayer = GetNodeOrNull<AudioStreamPlayer>("../Microphone");
 
 		if (voiceIndicator == null)
@@ -36,6 +38,13 @@ public partial class VoiceChat : Node
 		if (microphonePlayer == null)
 		{
 			GD.PrintErr("Nó Microphone não encontrado.");
+			SetProcess(false);
+			return;
+		}
+
+		if (AudioServer.GetBusIndex("Microphone") < 0)
+		{
+			GD.PrintErr("Barramento Microphone não encontrado!");
 			SetProcess(false);
 			return;
 		}

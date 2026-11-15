@@ -280,3 +280,19 @@ func _is_valid_room_code(room_code: String) -> bool:
 		and int(room_code) >= 100000
 		and int(room_code) <= 999999
 	)
+
+func stop_multiplayer() -> void:
+	# Closes any active session (host or client) and frees the discovery socket.
+	# Used when leaving the multiplayer screen back to the main menu.
+	if _discovery_peer != null:
+		_discovery_peer.close()
+		_discovery_peer = null
+
+	if peer != null:
+		peer.close()
+		peer = null
+
+	multiplayer.multiplayer_peer = null
+	_room_code = ""
+	_player_nicknames.clear()
+

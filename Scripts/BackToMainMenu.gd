@@ -9,4 +9,8 @@ func _ready() -> void:
 	btn_back.pressed.connect(_on_back_pressed)
 
 func _on_back_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	var transitions := get_node_or_null("/root/SceneTransitions")
+	if transitions != null and transitions.has_method("GoToMainMenu"):
+		transitions.call("GoToMainMenu")
+		return
+	get_tree().change_scene_to_file("res://Scenes/MainMenu.tscn")

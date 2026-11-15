@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://game_manager_scene"]
+
+[ext_resource type="Script" uid="uid://claq55cqfrx3x" path="res://Scripts/GameManager.cs" id="1_ttgqx"]
+[ext_resource type="PackedScene" uid="uid://1shx8uqhmok5" path="res://Scenes/Player.tscn" id="2_lxnjm"]
+
+[node name="Game" type="Node2D" unique_id=1000000000]
+script = ExtResource("1_ttgqx")
+
+[node name="Player" type="CharacterBody2D" parent="." unique_id=1000000001]
+instance = ExtResource("2_lxnjm")

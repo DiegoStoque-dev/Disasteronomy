@@ -15,13 +15,14 @@ public partial class Player : CharacterBody2D
 	private const int SpriteFrameHeight = 64;
 
 	private AnimatedSprite2D? sprite;
-	private Label nicknameLabel;
-	private Node networkHandler;
+	private Label? nicknameLabel;
+	private Node? networkHandler;
 	private Callable nicknameChangedCallable;
 	private long playerId;
 	private string facing = "right";
 	private float coyoteTimeRemaining;
 	private float jumpBufferTimeRemaining;
+	private Global? global;
 
 	public override void _Ready()
 	{
@@ -36,11 +37,25 @@ public partial class Player : CharacterBody2D
 		}
 
 		nicknameLabel = GetNode<Label>("NicknameLabel");
-		networkHandler = GetNode("/root/HighLevelNetworkHandler");
-		nicknameChangedCallable = Callable.From<long, string>(OnPlayerNicknameChanged);
-		networkHandler.Connect("player_nickname_changed", nicknameChangedCallable);
+		networkHandler = GetNodeOrNull("/root/HighLevelNetworkHandler");
+		if (networkHandler != null)
+		{
+			nicknameChangedCallable = Callable.From<long, string>(OnPlayerNicknameChanged);
+			if (!networkHandler.IsConnected("player_nickname_changed", nicknameChangedCallable))
+				networkHandler.Connect("player_nickname_changed", nicknameChangedCallable);
+		}
+
 		if (long.TryParse(Name.ToString(), out playerId))
-			UpdateNickname(networkHandler.Call("get_player_nickname", playerId).AsString());
+		{
+			if (networkHandler != null)
+				UpdateNickname(networkHandler.Call("get_player_nickname", playerId).AsString());
+		}
+		else
+		{
+			// Single-player: the node is not a networked player id, just show a default name.
+			playerId = 0;
+			UpdateNickname("Jogador");
+		}
 
 		sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
 		AddJumpAnimation(
@@ -59,11 +74,102 @@ public partial class Player : CharacterBody2D
 		if (IsMultiplayerAuthority())
 			GD.Print("Controlando meu personagem: " + Name);
 
+		ApplySavedState();
+		EnsureSinglePlayerGround();
+
 		UpdateAnimation("idle_right");
+	}
+
+	/// <summary>
+	/// Adds a wide test platform when the scene runs standalone (single-player).
+	/// In multiplayer the level geometry is provided by the world scene instead.
+	/// </summary>
+	private void EnsureSinglePlayerGround()
+	{
+		if (Multiplayer.MultiplayerPeer != null)
+			return;
+
+		Node parent = GetParent() ?? this;
+		if (parent.HasNode("SinglePlayerGround"))
+			return;
+
+		StaticBody2D floor = new() { Name = "SinglePlayerGround" };
+		CollisionShape2D shape = new()
+		{
+			Shape = new RectangleShape2D { Size = new Vector2(2000, 40) }
+		};
+		floor.AddChild(shape);
+
+		// Simple visible platform so the standalone test is readable on screen.
+		Polygon2D visual = new()
+		{
+			Polygon = new[]
+			{
+				new Vector2(-1000, -20), new Vector2(1000, -20),
+				new Vector2(1000, 20), new Vector2(-1000, 20),
+			},
+			Color = new Color(0.25f, 0.30f, 0.40f),
+		};
+		floor.AddChild(visual);
+
+		floor.Position = new Vector2(GlobalPosition.X, GlobalPosition.Y + 140);
+		parent.AddChild(floor);
+
+		GD.Print("[Player] Single-player test ground created.");
+	}
+
+	/// <summary>
+	/// Restores the player's saved position (single-player) or starts a fresh run
+	/// when the main menu requested a new game.
+	/// </summary>
+	private void ApplySavedState()
+	{
+		global = GetNodeOrNull<Global>("/root/Global");
+		if (global == null)
+			return;
+
+		if (global.NewRunRequested)
+		{
+			// Fresh run: keep the scene's default position and overwrite the old save.
+			global.NewRunRequested = false;
+			global.Save(GlobalPosition);
+			GD.Print("[Player] New run started at " + GlobalPosition);
+			return;
+		}
+
+		if (!global.HasPlayerSave && global.HasSave())
+		{
+			global.Load();
+		}
+
+		if (global.HasPlayerSave)
+		{
+			GlobalPosition = global.SavedPlayerPosition;
+			GD.Print("[Player] Resumed from save at " + GlobalPosition);
+		}
+		else
+		{
+			global.Save(GlobalPosition);
+			GD.Print("[Player] No save found, created a new one at " + GlobalPosition);
+		}
+	}
+
+	/// <summary>Persists the player's current position through the Global autoload.</summary>
+	public void SaveState()
+	{
+		// Multiplayer positions are transient: only the single-player save is persisted.
+		if (Multiplayer.MultiplayerPeer != null)
+			return;
+
+		global ??= GetNodeOrNull<Global>("/root/Global");
+		global?.Save(GlobalPosition);
 	}
 
 	public override void _ExitTree()
 	{
+		// Persist progress before leaving the scene (single-player).
+		SaveState();
+
 		if (networkHandler != null &&
 			networkHandler.IsConnected("player_nickname_changed", nicknameChangedCallable))
 		{
@@ -73,10 +179,9 @@ public partial class Player : CharacterBody2D
 
 	public override void _PhysicsProcess(double delta)
 	{
-		// Verificar se o multiplayer está inicializado
-		if (Multiplayer.MultiplayerPeer == null)
-			return;
-		if (!IsMultiplayerAuthority())
+		// Only restrict control when a multiplayer session is actually running.
+		// In single-player (no peer) the local player always has control.
+		if (Multiplayer.MultiplayerPeer != null && !IsMultiplayerAuthority())
 			return;
 
 		float horizontal = Input.GetAxis("ui_left", "ui_right");
@@ -184,6 +289,9 @@ public partial class Player : CharacterBody2D
 
 	private void UpdateNickname(string nickname)
 	{
+		if (nicknameLabel == null)
+			return;
+
 		nicknameLabel.Text = string.IsNullOrWhiteSpace(nickname)
 			? $"Jogador {playerId}"
 			: nickname;
