@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bw8cyw0n3c8u7"
-path="res://.godot/imported/traje_protecao_idle_right.png-99b7391310705dce1f5846a4618697af.ctex"
+uid="uid://dnnnwv0bhs1ul"
+path="res://.godot/imported/traje_padrao_right.png-893bc5ff47a1ada917fb99ba69086b73.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Protecao/Walk/traje_protecao_idle_right.png"
-dest_files=["res://.godot/imported/traje_protecao_idle_right.png-99b7391310705dce1f5846a4618697af.ctex"]
+source_file="res://Sprites/Traje_Padrao/Idle/traje_padrao_right.png"
+dest_files=["res://.godot/imported/traje_padrao_right.png-893bc5ff47a1ada917fb99ba69086b73.ctex"]
 
 [params]
 
