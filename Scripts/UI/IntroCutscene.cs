@@ -24,6 +24,11 @@ public partial class IntroCutscene : Control
     /// <summary>When true, changing to NextScenePath happens as soon as the video ends.</summary>
     [Export] public bool AutoAdvance = true;
 
+    /// <summary>Reusable skip-button scene shown over the video (optional).</summary>
+    [Export] public PackedScene SkipButtonScene = GD.Load<PackedScene>("res://Scenes/UI/IntroSkipButton.tscn");
+    /// <summary>Whether to add the on-screen skip button. Set false on cutscenes that should not show it.</summary>
+    [Export] public bool ShowSkipButton = true;
+
     /// <summary>Optional voice chat tutorial (shown when the video ends).</summary>
     [Export] public NodePath VoiceTutorialPath = new("");
 
@@ -33,6 +38,7 @@ public partial class IntroCutscene : Control
     private VideoStreamPlayer? _video;
     private VoiceTutorial? _voiceTutorial;
     private TabTutorial? _tabTutorial;
+    private IntroSkipButton? _skipButton;
     private bool _finished;
     private bool _tutorialShown;
 
@@ -74,6 +80,15 @@ public partial class IntroCutscene : Control
 
         _video.Finished += OnVideoFinished;
         _video.Play();
+
+        // Show a visible skip hint (bottom-right, fades in after a delay).
+        // Only added when skipping is allowed, so tutorial cutscenes can opt out via ShowSkipButton.
+        if (ShowSkipButton && AllowSkip && SkipButtonScene != null)
+        {
+            _skipButton = SkipButtonScene.Instantiate<IntroSkipButton>();
+            AddChild(_skipButton);
+            _skipButton.Pressed += SkipIntro;
+        }
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -98,6 +113,17 @@ public partial class IntroCutscene : Control
             return;
 
         GetViewport().SetInputAsHandled();
+        SkipIntro();
+    }
+
+    /// <summary>
+    /// Shared skip entry point used by both the Enter/key/mouse handler and the on-screen Skip button,
+    /// so there is a single place with the skip logic (no duplication).
+    /// </summary>
+    private void SkipIntro()
+    {
+        if (!AllowSkip || _finished)
+            return;
 
         // Skipping the video still leads to the tutorial when there is one,
         // so the tutorial step is never silently bypassed.

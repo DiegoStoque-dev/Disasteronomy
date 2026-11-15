@@ -1,0 +1,513 @@
+using Godot;
+using System;
+using System.Collections.Generic;
+
+public partial class Phase1Manager : Node2D
+{
+	public enum PhaseState { Airlock, Transit, CpsArrival, Minigame, Completed, Failed }
+
+	[Export] public Rect2 LevelBounds = new Rect2(-600, -450, 2200, 1300);
+	[Export] public Vector2 AirlockPosition = new Vector2(-400, 0);
+	[Export] public Vector2 CpsPosition = new Vector2(1400, 0);
+	[Export] public float CpsInteractRadius = 260f;
+	[Export] public float MissionTime = 0f;
+	[Export] public string NextScenePath = "res://Scenes/Phase2/Phase2.tscn";
+
+	private PhaseState state = PhaseState.Airlock;
+	private Dictionary<int, bool> playerCompleted = new();
+	private bool localCompleted = false;
+	private string failureReason = "";
+
+	private CpsMinigame cpsMinigame;
+	private MultiplayerSpawner spawner;
+
+	private Label hudCharges;
+	private Label hudTether;
+	private Label hudObjective;
+	private Label hudTimer;
+	private Label hudDebug;
+	private Label hudPrompt;
+
+	private ColorRect screenOverlay;
+	private Label screenTitle;
+	private Label screenReason;
+	private Label screenDetails;
+	private Button screenBtnRetry;
+	private Button screenBtnMenu;
+	private Button screenBtnNext;
+
+	private Node2D worldLayer;
+	private CanvasLayer hudLayer;
+	private EvaPlayer localPlayer;
+
+	/// <summary>True while the player must not control the astronaut (minigame open or phase over).</summary>
+	public bool InputLocked =>
+		state == PhaseState.Completed ||
+		state == PhaseState.Failed ||
+		(cpsMinigame != null && cpsMinigame.IsOpen);
+
+	private const string Phase1Controls = "W A S D: suit thrusters  |  Hold left mouse: reach for a handrail\nA / D or W / S: slide along the rail  |  Space: SAFER (jet fires toward the cursor, you go the other way)\nE: calibrate at the CPS  |  P: pause  |  F9: debug teleport";
+	private const string Phase1Briefing = "Two thermal actuators on the solar wings are frozen. Leave the Utility Tunnel in your EMU suit and follow the yellow handrails to the Cryogenic Propulsion Stage.\n\nStay clipped to the rails: if your tether stretches too far, it snaps. Use the SAFER nitrogen jets only for the big gaps, you have just a few charges.";
+
+	public bool IsPlayerNearCps(Vector2 worldPos) => worldPos.DistanceTo(CpsPosition) <= CpsInteractRadius;
+
+	public override void _Ready()
+	{
+		RegisterGrabInput();
+		BuildLevel();
+		ConfigureSpawner();
+		SetupHud();
+		SetupScreens();
+
+		FindLocalPlayer();
+		if (localPlayer == null && !Multiplayer.HasMultiplayerPeer())
+			SpawnSoloPlayer();
+
+		// Solo: always start next to the airlock (the player placed in the editor sits at 0,0).
+		if (localPlayer != null && !Multiplayer.HasMultiplayerPeer())
+			localPlayer.GlobalPosition = AirlockPosition + new Vector2(80f, 0f);
+
+		UpdateObjective();
+		PauseMenu.Attach(this, Phase1Controls);
+		BriefingScreen.Open(this, "PHASE 1 - VACUUM CALIBRATION", Phase1Briefing, Phase1Controls);
+		GD.Print("Phase1: level built");
+	}
+
+	public override void _Process(double delta)
+	{
+		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
+
+		MissionTime += (float)delta;
+		hudTimer.Text = $"Time: {MissionTime:F1}s";
+
+		if (localPlayer == null || !IsInstanceValid(localPlayer))
+			FindLocalPlayer();
+
+		UpdateProgressState();
+		UpdateHud();
+	}
+
+	private void UpdateProgressState()
+	{
+		if (localPlayer == null) return;
+		if (state == PhaseState.Minigame) return;
+
+		PhaseState next;
+		if (IsPlayerNearCps(localPlayer.GlobalPosition))
+			next = PhaseState.CpsArrival;
+		else if (localPlayer.GlobalPosition.DistanceTo(AirlockPosition) > 200f)
+			next = PhaseState.Transit;
+		else
+			next = PhaseState.Airlock;
+
+		if (next != state)
+		{
+			state = next;
+			UpdateObjective();
+		}
+	}
+
+	private void RegisterGrabInput()
+	{
+		if (!InputMap.HasAction("grab"))
+		{
+			InputMap.AddAction("grab");
+			InputMap.ActionAddEvent("grab", new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
+		}
+		// The new project's Input Map uses "jump", not "pular"; SAFER (Space) depends on "pular".
+		if (!InputMap.HasAction("pular"))
+		{
+			InputMap.AddAction("pular");
+			InputMap.ActionAddEvent("pular", new InputEventKey { PhysicalKeycode = Key.Space });
+		}
+	}
+
+	private EvaPlayer FindLocalPlayer()
+	{
+		if (Multiplayer.HasMultiplayerPeer())
+		{
+			foreach (Node node in GetTree().GetNodesInGroup("network_players"))
+			{
+				if (node is EvaPlayer p && p.IsMultiplayerAuthority())
+				{
+					localPlayer = p;
+					return p;
+				}
+			}
+		}
+		else
+		{
+			foreach (Node child in GetChildren())
+			{
+				if (child is EvaPlayer p)
+				{
+					localPlayer = p;
+					return p;
+				}
+			}
+		}
+		return null;
+	}
+
+	private void ConfigureSpawner()
+	{
+		spawner = GetNodeOrNull<MultiplayerSpawner>("MultiplayerSpawner");
+		if (spawner == null)
+		{
+			spawner = new MultiplayerSpawner { Name = "MultiplayerSpawner" };
+			AddChild(spawner);
+		}
+		spawner.SpawnPath = new NodePath(".");
+		spawner.AddSpawnableScene("res://Scenes/Phase1/EvaPlayer.tscn");
+	}
+
+	private void SetupHud()
+	{
+		hudLayer = new CanvasLayer { Name = "HUD", Layer = 100 };
+		AddChild(hudLayer);
+
+		hudCharges = new Label { Position = new Vector2(20, 20), Text = "SAFER: 3/3" };
+		hudLayer.AddChild(hudCharges);
+
+		hudTether = new Label { Position = new Vector2(20, 44), Text = "Tether: OK" };
+		hudLayer.AddChild(hudTether);
+
+		hudObjective = new Label { Position = new Vector2(20, 68), Text = "Objective: Reach the CPS" };
+		hudLayer.AddChild(hudObjective);
+
+		hudTimer = new Label { Position = new Vector2(20, 92), Text = "Time: 0.0s" };
+		hudLayer.AddChild(hudTimer);
+
+		hudDebug = new Label { Position = new Vector2(20, 116), Text = "Debug: waiting..." };
+		hudLayer.AddChild(hudDebug);
+
+		hudPrompt = new Label { Text = "", HorizontalAlignment = HorizontalAlignment.Center };
+		hudLayer.AddChild(hudPrompt);
+		hudPrompt.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.BottomWide);
+		hudPrompt.OffsetTop = -90f;
+		hudPrompt.OffsetBottom = -50f;
+	}
+
+	private void UpdateHud()
+	{
+		if (localPlayer == null)
+		{
+			hudDebug.Text = "Debug: waiting for player...";
+			return;
+		}
+
+		hudCharges.Text = $"SAFER: {localPlayer.GetSaferCharges()}/{localPlayer.SaferChargesDefault}  (Space, jet points at cursor)";
+
+		float tension = localPlayer.GetTetherTension();
+		if (localPlayer.IsTetherBroken)
+		{
+			hudTether.Text = "Tether: BROKEN (short arm reach)";
+			hudTether.Modulate = Colors.Red;
+		}
+		else
+		{
+			hudTether.Text = $"Tether: {tension * 100f:F0}%";
+			hudTether.Modulate = tension > 0.8f ? Colors.Red : (tension > 0.5f ? Colors.Yellow : Colors.White);
+		}
+
+		hudDebug.Text = $"Pos: {localPlayer.GlobalPosition:F0} | Vel: {localPlayer.Velocity:F0} | State: {localPlayer.state} | Rope: {localPlayer.GetRopeState()} ({localPlayer.GetExtremeCount()}/{localPlayer.MaxExtremesBeforeBreak}) | F9 = teleport to CPS";
+
+		if (state == PhaseState.CpsArrival && !localCompleted)
+			hudPrompt.Text = "Press E to calibrate the actuators";
+		else
+			hudPrompt.Text = "";
+	}
+
+	private void SpawnSoloPlayer()
+	{
+		foreach (Node child in GetChildren())
+			if (child is EvaPlayer) return;
+		var player = new EvaPlayer();
+		player.Name = "1";
+		player.Position = AirlockPosition + new Vector2(80f, 0f);
+		AddChild(player);
+		localPlayer = player;
+		player.SetMultiplayerAuthority(1, true);
+		GD.Print($"Phase1: player spawned at {localPlayer.GlobalPosition}");
+	}
+
+	private void BuildLevel()
+	{
+		// Screen-space background only (does not move with the camera).
+		var backgroundLayer = new CanvasLayer { Name = "Background", Layer = -100 };
+		AddChild(backgroundLayer);
+
+		var bg = new ColorRect { Color = new Color(0.02f, 0.02f, 0.06f, 1f) };
+		bg.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+		backgroundLayer.AddChild(bg);
+
+		// Everything else lives in WORLD space, so it follows the camera.
+		// ZIndex < 0 keeps the world behind the astronaut (the player is a sibling added earlier).
+		worldLayer = new Node2D { Name = "World", ZIndex = -10 };
+		AddChild(worldLayer);
+
+		// Stars (world space, static)
+		var rng = new RandomNumberGenerator { Seed = 12345 };
+		for (int i = 0; i < 300; i++)
+		{
+			var star = new ColorRect
+			{
+				Color = new Color(1f, 1f, 1f, rng.RandfRange(0.35f, 0.9f)),
+				Size = new Vector2(2f, 2f),
+				Position = new Vector2(rng.RandfRange(-1200f, 2200f), rng.RandfRange(-900f, 1200f))
+			};
+			worldLayer.AddChild(star);
+		}
+
+		// Level bounds (visual only)
+		var bounds = new ColorRect { Color = new Color(0.3f, 0.3f, 0.4f, 0.15f) };
+		bounds.Size = LevelBounds.Size;
+		bounds.Position = LevelBounds.Position;
+		worldLayer.AddChild(bounds);
+
+		// Airlock block (centered on AirlockPosition)
+		var airlock = new ColorRect { Size = new Vector2(100, 140), Color = new Color(0.5f, 0.5f, 0.55f) };
+		airlock.Position = AirlockPosition + new Vector2(-50, -70);
+		worldLayer.AddChild(airlock);
+		var airlockLabel = new Label
+		{
+			Text = "Utility Tunnel / MMSEV",
+			Position = AirlockPosition + new Vector2(-100, -110),
+			Size = new Vector2(200, 24),
+			HorizontalAlignment = HorizontalAlignment.Center
+		};
+		worldLayer.AddChild(airlockLabel);
+
+		// CPS block (centered on CpsPosition)
+		var cpsBlock = new ColorRect { Size = new Vector2(120, 160), Color = new Color(0.9f, 0.8f, 0.2f) };
+		cpsBlock.Position = CpsPosition + new Vector2(-60, -80);
+		worldLayer.AddChild(cpsBlock);
+		var cpsLabel = new Label
+		{
+			Text = "Cryogenic Propulsion Stage",
+			Position = CpsPosition + new Vector2(-140, -110),
+			Size = new Vector2(280, 24),
+			HorizontalAlignment = HorizontalAlignment.Center
+		};
+		worldLayer.AddChild(cpsLabel);
+		var frozenMarker = new ColorRect { Size = new Vector2(20, 20), Color = Colors.Red };
+		frozenMarker.Position = CpsPosition + new Vector2(-10, 30);
+		worldLayer.AddChild(frozenMarker);
+
+		// Tether anchor at the airlock (the player re-clips the cable to the rails it grabs)
+		var tetherAnchor = new Node2D { Name = "TetherAnchor", Position = AirlockPosition };
+		worldLayer.AddChild(tetherAnchor);
+		tetherAnchor.AddToGroup("tether_anchor");
+
+		// Handrail path. Gaps of ~250 px (R4->R5 and R6->R7) are beyond the arm's reach: SAFER needed.
+		CreateHandrail(new Vector2(-250, 0), new Vector2(-100, 0));
+		CreateHandrail(new Vector2(-100, -40), new Vector2(-100, -140));
+		CreateHandrail(new Vector2(-100, -140), new Vector2(400, -140));
+		CreateHandrail(new Vector2(400, -140), new Vector2(400, -40));
+		CreateHandrail(new Vector2(650, 0), new Vector2(900, 0));
+		CreateHandrail(new Vector2(900, 0), new Vector2(900, 100));
+		CreateHandrail(new Vector2(1150, 140), new Vector2(1300, 140));
+		CreateHandrail(new Vector2(1300, 140), new Vector2(1300, 0));
+	}
+
+	private void CreateHandrail(Vector2 start, Vector2 end)
+	{
+		var rail = new Handrail { Name = $"Handrail_{start.X}_{start.Y}_{end.X}_{end.Y}".Replace("-", "m") };
+		rail.Position = start;
+		rail.StartOffset = Vector2.Zero;
+		rail.EndOffset = end - start;
+		worldLayer.AddChild(rail);
+	}
+
+	private void SetupScreens()
+	{
+		var screenLayer = new CanvasLayer { Name = "Screens", Layer = 110 };
+		AddChild(screenLayer);
+
+		screenOverlay = new ColorRect
+		{
+			Color = new Color(0, 0, 0, 0.8f),
+			Visible = false
+		};
+		screenLayer.AddChild(screenOverlay);
+		screenOverlay.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+
+		var center = new CenterContainer();
+		screenOverlay.AddChild(center);
+		center.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+
+		var screenContainer = new VBoxContainer
+		{
+			CustomMinimumSize = new Vector2(520, 0),
+			Alignment = BoxContainer.AlignmentMode.Center
+		};
+		center.AddChild(screenContainer);
+
+		screenTitle = new Label { Text = "MISSION FAILED", HorizontalAlignment = HorizontalAlignment.Center };
+		screenContainer.AddChild(screenTitle);
+
+		screenReason = new Label { Text = "", HorizontalAlignment = HorizontalAlignment.Center };
+		screenContainer.AddChild(screenReason);
+
+		screenDetails = new Label
+		{
+			Text = "",
+			HorizontalAlignment = HorizontalAlignment.Center,
+			AutowrapMode = TextServer.AutowrapMode.WordSmart
+		};
+		screenContainer.AddChild(screenDetails);
+
+		screenBtnRetry = new Button { Text = "Retry" };
+		screenBtnRetry.Pressed += Retry;
+		screenContainer.AddChild(screenBtnRetry);
+
+		screenBtnNext = new Button { Text = "Next: Phase 2", Visible = false };
+		screenBtnNext.Pressed += GoToNextPhase;
+		screenContainer.AddChild(screenBtnNext);
+
+		screenBtnMenu = new Button { Text = "Back to Menu" };
+		screenBtnMenu.Pressed += BackToMenu;
+		screenContainer.AddChild(screenBtnMenu);
+	}
+
+	public void RequestMinigame()
+	{
+		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
+		if (localCompleted) return;
+		if (cpsMinigame != null && cpsMinigame.IsOpen) return;
+
+		if (cpsMinigame == null)
+		{
+			cpsMinigame = new CpsMinigame { Name = "CpsMinigame", Layer = 50 };
+			cpsMinigame.MinigameCompleted += OnLocalMinigameCompleted;
+			cpsMinigame.MinigameCancelled += OnLocalMinigameCancelled;
+			AddChild(cpsMinigame);
+		}
+		cpsMinigame.Open();
+		state = PhaseState.Minigame;
+		UpdateObjective();
+	}
+
+	private void OnLocalMinigameCancelled()
+	{
+		if (state == PhaseState.Minigame)
+			state = PhaseState.CpsArrival;
+		UpdateObjective();
+	}
+
+	private void OnLocalMinigameCompleted()
+	{
+		localCompleted = true;
+		int peerId = Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetUniqueId() : 1;
+		if (Multiplayer.HasMultiplayerPeer())
+			Rpc(nameof(RpcReportComplete), peerId);
+		else
+			RpcReportComplete(peerId);
+		UpdateObjective();
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	private void RpcReportComplete(int peerId)
+	{
+		playerCompleted[peerId] = true;
+		CheckCompletion();
+	}
+
+	private void CheckCompletion()
+	{
+		int required = Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetPeers().Length + 1 : 1;
+		int completed = 0;
+		foreach (var kv in playerCompleted)
+			if (kv.Value) completed++;
+
+		if (completed >= required && state != PhaseState.Completed && state != PhaseState.Failed)
+		{
+			state = PhaseState.Completed;
+			ShowSuccessScreen();
+		}
+	}
+
+	public void OnMissionFailed(string reason)
+	{
+		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
+		if (Multiplayer.HasMultiplayerPeer())
+			Rpc(nameof(RpcReportFailed), reason);
+		else
+			RpcReportFailed(reason);
+	}
+
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	private void RpcReportFailed(string reason)
+	{
+		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
+		failureReason = reason;
+		state = PhaseState.Failed;
+		if (cpsMinigame != null && cpsMinigame.IsOpen) cpsMinigame.Close();
+		ShowFailureScreen();
+	}
+
+	private void UpdateObjective()
+	{
+		string objective;
+		if (state == PhaseState.Minigame && localCompleted)
+			objective = "Objective: Waiting for your teammates to finish";
+		else
+			objective = state switch
+			{
+				PhaseState.Airlock => "Objective: Leave the airlock and grab the yellow handrails (hold left mouse)",
+				PhaseState.Transit => "Objective: Follow the handrails to the CPS (use SAFER for the gaps)",
+				PhaseState.CpsArrival => "Objective: Press E at the CPS to start calibration",
+				PhaseState.Minigame => "Objective: Spin the mouse around the dial (Esc to cancel)",
+				PhaseState.Completed => "Objective: Mission complete",
+				_ => "Objective: Mission failed"
+			};
+		hudObjective.Text = objective;
+	}
+
+	private void ShowSuccessScreen()
+	{
+		screenOverlay.Visible = true;
+		screenTitle.Text = "PHASE 1 COMPLETE";
+		screenReason.Text = "Thermal actuators unfrozen.";
+		screenDetails.Text = $"Time: {MissionTime:F1}s | Energy: 160 kWh | Comms: stable (1.3-2s latency) | Mass: ~115,000 kg";
+		screenBtnRetry.Visible = false;
+		screenBtnNext.Visible = ResourceLoader.Exists(NextScenePath);
+		screenBtnMenu.Text = "Back to Menu";
+		screenBtnMenu.Visible = true;
+		Sfx.Play(this, "mission_complete");
+		UpdateObjective();
+	}
+
+	private void ShowFailureScreen()
+	{
+		screenOverlay.Visible = true;
+		screenTitle.Text = "MISSION FAILED";
+		screenReason.Text = failureReason;
+		screenDetails.Text = "Return to the airlock and try again.";
+		screenBtnRetry.Visible = true;
+		screenBtnNext.Visible = false;
+		screenBtnMenu.Text = "Back to Menu";
+		screenBtnMenu.Visible = true;
+		Sfx.Play(this, "mission_fail");
+		UpdateObjective();
+	}
+
+	private void Retry() => RestartPhase();
+
+	/// <summary>Single restart entry point for Phase 1 (out-of-bounds, retry button, etc.).</summary>
+	public void RestartPhase()
+	{
+		GetTree().ChangeSceneToFile("res://Scenes/Phase1/Phase1.tscn");
+	}
+
+	private void GoToNextPhase()
+	{
+		if (ResourceLoader.Exists(NextScenePath))
+			GetTree().ChangeSceneToFile(NextScenePath);
+	}
+
+	private void BackToMenu()
+	{
+		GetTree().ChangeSceneToFile("res://Scenes/MainMenu.tscn");
+	}
+}
