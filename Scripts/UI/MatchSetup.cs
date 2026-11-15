@@ -630,9 +630,10 @@ public partial class MatchSetup : Control
 
         // The host started the mission: everyone begins the shared intro chain
         // together (Cutscene1 -> Cutscene2 -> Cutscene3), which then leads into
-        // Phase 1. The cutscenes still play - nothing is skipped.
+        // Phase 1. The cutscenes still play - nothing is skipped. All peers confirm
+        // they are leaving this scene through the MatchSetup_Exit barrier.
         if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeScene(CutsceneScenePath);
+            SceneTransitions.Instance.ChangeSceneSynchronized(CutsceneScenePath, "MatchSetup_Exit");
         else
             GetTree().ChangeSceneToFile(CutsceneScenePath);
     }

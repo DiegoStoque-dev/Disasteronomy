@@ -14,6 +14,10 @@ public partial class SceneTransitions : CanvasLayer
 
     private ColorRect _fadeRect;
     private bool _transitioning;
+    private string _pendingSyncPath = "";
+    private string _pendingSyncBarrier = "";
+    private Callable _syncConnectCallable;
+    private bool _syncConnected;
 
     public override void _Ready()
     {
@@ -43,6 +47,58 @@ public partial class SceneTransitions : CanvasLayer
         }
         _transitioning = true;
         _ = RunTransition(scenePath, fadeTime);
+    }
+
+    /// <summary>
+    /// Synchronized scene change used by the multiplayer flow. Every peer calls it
+    /// once to confirm it finished the current scene (an exit barrier handled by the
+    /// NetSession autoload). When every participant confirms, the all_ready signal
+    /// is emitted on every device and each peer fades to the next scene. In solo the
+    /// barrier resolves immediately and the scene changes right away.
+    /// </summary>
+    public void ChangeSceneSynchronized(string scenePath, string exitBarrier)
+    {
+        if (_transitioning || string.IsNullOrEmpty(scenePath))
+        {
+            return;
+        }
+
+        _pendingSyncPath = scenePath;
+        _pendingSyncBarrier = exitBarrier;
+
+        Node handler = GetNodeOrNull("/root/HighLevelNetworkHandler");
+        if (handler == null)
+        {
+            // No session autoload: fall back to a plain transition.
+            ChangeScene(scenePath);
+            return;
+        }
+
+        // Connect BEFORE marking ready and check the barrier name (no blind OneShot).
+        _syncConnectCallable = Callable.From<string>(OnSyncAllReady);
+        _syncConnected = true;
+        handler.Connect("all_ready", _syncConnectCallable);
+        handler.Call("mark_ready", exitBarrier);
+    }
+
+    private void OnSyncAllReady(string barrierName)
+    {
+        if (barrierName != _pendingSyncBarrier)
+        {
+            return;
+        }
+
+        // Single unlock per transition: stop listening, then change the scene.
+        _pendingSyncBarrier = string.Empty;
+        Node handler = GetNodeOrNull("/root/HighLevelNetworkHandler");
+        if (_syncConnected && handler != null && handler.IsConnected("all_ready", _syncConnectCallable))
+        {
+            handler.Disconnect("all_ready", _syncConnectCallable);
+        }
+        _syncConnected = false;
+        _syncConnectCallable = default;
+
+        ChangeScene(_pendingSyncPath);
     }
 
     /// <summary>
