@@ -660,84 +660,22 @@ animation = &"Spaceship"
 autoplay = "Spaceship"
 frame_progress = 0.23412949
 
-[node name="MenuContainer" type="VBoxContainer" parent="." unique_id=840968932]
-layout_mode = 1
-offset_left = 93.0
-offset_top = 243.0
-offset_right = 8692.999
-offset_bottom = 7463.0
-scale = Vector2(0.05, 0.05)
-
-[node name="BtnStart" type="TextureButton" parent="MenuContainer" unique_id=1800237949]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("2_8um5k")
-
-[node name="BtnMultiplayer" type="TextureButton" parent="MenuContainer" unique_id=899176569]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("3_xim88")
-
-[node name="BtnOptions" type="TextureButton" parent="MenuContainer" unique_id=946773181]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("4_koqhg")
-
-[node name="BtnCredits" type="TextureButton" parent="MenuContainer" unique_id=945817213]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("5_cmrfp")
-
-[node name="BtnLeave" type="TextureButton" parent="MenuContainer" unique_id=433030039]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("6_loo7a")
-
-[node name="MenuStart" type="VBoxContainer" parent="." unique_id=479540603]
-visible = false
-layout_mode = 0
-offset_left = 93.0
-offset_top = 243.0
-offset_right = 4662.0
-offset_bottom = 4246.001
-scale = Vector2(0.05, 0.05)
-
-[node name="BtnLoad" type="TextureButton" parent="MenuStart" unique_id=1331457605]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("9_rrcx7")
-
-[node name="BtnNewgame" type="TextureButton" parent="MenuStart" unique_id=1314273675]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("8_cmrfp")
-
-[node name="MenuMultiplayer" type="VBoxContainer" parent="." unique_id=800935915]
-layout_mode = 0
-offset_left = 93.0
-offset_top = 243.0
-offset_right = 4662.0
-offset_bottom = 4246.001
-scale = Vector2(0.05, 0.05)
-
-[node name="BtnCreate" type="TextureButton" parent="MenuMultiplayer" unique_id=297416595]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("7_koqhg")
-
-[node name="BtnJoin" type="TextureButton" parent="MenuMultiplayer" unique_id=1376502233]
-layout_mode = 2
-size_flags_horizontal = 0
-texture_normal = ExtResource("12_fh7cp")
-
 [node name="MenuOptions" type="VBoxContainer" parent="." unique_id=999999999]
 visible = false
-layout_mode = 0
-offset_left = 93.0
-offset_top = 243.0
-offset_right = 4662.0
-offset_bottom = 4246.001
-scale = Vector2(0.05, 0.05)
+custom_minimum_size = Vector2(600, 500)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -2146.9998
+offset_top = -515.4999
+offset_right = 2147.0002
+offset_bottom = 515.5001
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
 
 [node name="OptionsTitle" type="Label" parent="MenuOptions" unique_id=999999998]
 custom_minimum_size = Vector2(0, 60)
@@ -778,6 +716,95 @@ layout_mode = 2
 text = "Teclas: WASD = Mover | Espaço = Pular | V = Voz"
 
 [node name="BtnOptionsBack" type="TextureButton" parent="MenuOptions" unique_id=999999991]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("6_loo7a")
+
+[node name="MenuContainer" type="VBoxContainer" parent="." unique_id=840968932]
+layout_mode = 1
+offset_left = 93.0
+offset_top = 243.0
+offset_right = 8692.999
+offset_bottom = 7463.0
+scale = Vector2(0.05, 0.05)
+
+[node name="BtnStart" type="TextureButton" parent="MenuContainer" unique_id=1800237949]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("2_8um5k")
+
+[node name="BtnMultiplayer" type="TextureButton" parent="MenuContainer" unique_id=899176569]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("3_xim88")
+
+[node name="BtnOptions" type="TextureButton" parent="MenuContainer" unique_id=946773181]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("4_koqhg")
+
+[node name="BtnCredits" type="TextureButton" parent="MenuContainer" unique_id=945817213]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("5_cmrfp")
+
+[node name="BtnLeave" type="TextureButton" parent="MenuContainer" unique_id=433030039]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("6_loo7a")
+
+[node name="MenuStart" type="VBoxContainer" parent="." unique_id=479540603]
+visible = false
+custom_minimum_size = Vector2(450, 350)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="BtnLoad" type="TextureButton" parent="MenuStart" unique_id=1331457605]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("9_rrcx7")
+
+[node name="BtnNewgame" type="TextureButton" parent="MenuStart" unique_id=1314273675]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("8_cmrfp")
+
+[node name="BtnStartBack" type="TextureButton" parent="MenuStart" unique_id=1314273676]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("6_loo7a")
+
+[node name="MenuMultiplayer" type="VBoxContainer" parent="." unique_id=800935915]
+visible = false
+custom_minimum_size = Vector2(500, 400)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="BtnCreate" type="TextureButton" parent="MenuMultiplayer" unique_id=297416595]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("7_koqhg")
+
+[node name="BtnJoin" type="TextureButton" parent="MenuMultiplayer" unique_id=1376502233]
+layout_mode = 2
+size_flags_horizontal = 0
+texture_normal = ExtResource("12_fh7cp")
+
+[node name="BtnMultiplayerBack" type="TextureButton" parent="MenuMultiplayer" unique_id=1376502234]
 layout_mode = 2
 size_flags_horizontal = 0
 texture_normal = ExtResource("6_loo7a")
