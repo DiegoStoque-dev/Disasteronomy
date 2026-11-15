@@ -790,7 +790,7 @@ public partial class ShipManager : Node2D
                 return nickname;
         }
 
-        if (Multiplayer.MultiplayerPeer == null)
+        if (IsSolo)
             return Characters.GetName(GetLocalCharacterIndex());
 
         return $"Player {peerId}";

@@ -100,11 +100,12 @@ public partial class MatchSetup : Control
     /// </summary>
     private void StartOrJoinSession()
     {
-        if (Multiplayer.MultiplayerPeer == null)
+        bool solo = _handler == null || _handler.Call("is_solo").AsBool();
+        if (solo)
             _handler?.Call("start_server", "");
 
-        _isHost = Multiplayer.MultiplayerPeer == null || Multiplayer.IsServer();
-        _localId = Multiplayer.GetUniqueId();
+        _isHost = _handler == null || _handler.Call("is_host").AsBool();
+        _localId = solo ? 1 : (long)Multiplayer.GetUniqueId();
 
         RefreshAll();
     }

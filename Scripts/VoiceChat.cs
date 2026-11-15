@@ -132,7 +132,7 @@ public partial class VoiceChat : Node
 		if (!microphoneEnabled || capture == null)
 			return;
 
-		if (Multiplayer.MultiplayerPeer == null)
+		if (_netHandler == null || _netHandler.Call("is_solo").AsBool())
 			return;
 
 		// Grab the captured audio frames.
