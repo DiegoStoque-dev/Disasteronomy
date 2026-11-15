@@ -10,6 +10,8 @@ signal player_character_changed(peer_id: int, character_index: int)
 signal player_ready_changed(peer_id: int, ready: bool)
 signal player_kicked(peer_id: int)
 signal match_started
+signal tutorial_progress_changed(ready_count: int, total_count: int)
+signal tutorial_finished
 
 const PORT: int = 7777
 const DISCOVERY_PORT: int = 7778
@@ -28,6 +30,7 @@ var local_nickname: String = "Jogador"
 var _player_nicknames: Dictionary = {}
 var _player_characters: Dictionary = {}
 var _player_ready: Dictionary = {}
+var _tutorial_ready: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -55,31 +58,31 @@ func _process(_delta: float) -> void:
 		var response := DISCOVERY_RESPONSE_PREFIX + _room_code
 		var error := _discovery_peer.put_packet(response.to_utf8_buffer())
 		if error != OK:
-			push_error("Não foi possível responder à busca da sala: %s" % error_string(error))
+			push_error("Could not answer the room search: %s" % error_string(error))
 
 func start_server(room_code: String = "") -> void:
 	if peer != null:
-		push_warning("Uma conexão multiplayer já foi iniciada.")
+		push_warning("A multiplayer connection is already active.")
 		return
 
 	var selected_code := room_code.strip_edges()
 	if selected_code.is_empty():
 		selected_code = str(_rng.randi_range(100000, 999999))
 	elif not _is_valid_room_code(selected_code):
-		push_error("O código da sala deve ter exatamente 6 dígitos.")
+		push_error("The room code must have exactly 6 digits.")
 		return
 
 	var discovery := PacketPeerUDP.new()
 	var error := discovery.bind(DISCOVERY_PORT, "0.0.0.0")
 	if error != OK:
-		push_error("Não foi possível abrir a porta de descoberta %d: %s" % [DISCOVERY_PORT, error_string(error)])
+		push_error("Could not open the discovery port %d: %s" % [DISCOVERY_PORT, error_string(error)])
 		return
 
 	var new_peer := ENetMultiplayerPeer.new()
 	error = new_peer.create_server(PORT, 4)
 	if error != OK:
 		discovery.close()
-		push_error("Não foi possível iniciar o servidor na porta %d: %s" % [PORT, error_string(error)])
+		push_error("Could not start the server on port %d: %s" % [PORT, error_string(error)])
 		return
 
 	_room_code = selected_code
@@ -89,6 +92,7 @@ func start_server(room_code: String = "") -> void:
 	_player_nicknames.clear()
 	_player_characters.clear()
 	_player_ready.clear()
+	_tutorial_ready.clear()
 	_sync_player_nickname.rpc(multiplayer.get_unique_id(), local_nickname)
 	_auto_assign_character(multiplayer.get_unique_id())
 	server_started.emit()
@@ -147,7 +151,7 @@ func _submit_player_nickname(nickname: String) -> void:
 
 	var clean_nickname := _sanitize_nickname(nickname)
 	if clean_nickname.is_empty():
-		push_warning("Um cliente enviou um apelido vazio ou inválido.")
+		push_warning("A client sent an empty or invalid nickname.")
 		return
 
 	_sync_player_nickname.rpc(multiplayer.get_remote_sender_id(), clean_nickname)
@@ -167,19 +171,19 @@ func get_player_nickname(peer_id: int) -> String:
 func set_local_nickname(nickname: String) -> bool:
 	var clean_nickname := _sanitize_nickname(nickname)
 	if clean_nickname.is_empty():
-		push_error("O apelido deve ter entre 1 e %d caracteres." % MAX_NICKNAME_LENGTH)
+		push_error("The nickname must be between 1 and %d characters." % MAX_NICKNAME_LENGTH)
 		return false
 
 	var config := ConfigFile.new()
 	var load_error := config.load(PROFILE_PATH)
 	if load_error != OK and load_error != ERR_FILE_NOT_FOUND:
-		push_error("Não foi possível carregar o perfil local: %s" % error_string(load_error))
+		push_error("Could not load the local profile: %s" % error_string(load_error))
 		return false
 
 	config.set_value("profile", "nickname", clean_nickname)
 	var save_error := config.save(PROFILE_PATH)
 	if save_error != OK:
-		push_error("Não foi possível salvar o apelido local: %s" % error_string(save_error))
+		push_error("Could not save the local nickname: %s" % error_string(save_error))
 		return false
 
 	local_nickname = clean_nickname
@@ -193,7 +197,7 @@ func _load_local_nickname() -> void:
 	if error == ERR_FILE_NOT_FOUND:
 		return
 	if error != OK:
-		push_error("Não foi possível carregar o perfil local: %s" % error_string(error))
+		push_error("Could not load the local profile: %s" % error_string(error))
 		return
 
 	var saved_nickname: Variant = config.get_value("profile", "nickname", local_nickname)
@@ -210,13 +214,13 @@ func _sanitize_nickname(nickname: String) -> String:
 
 func start_client(ip_address: String) -> void:
 	if peer != null:
-		push_warning("Uma conexão multiplayer já foi iniciada.")
+		push_warning("A multiplayer connection is already active.")
 		return
 
 	var new_peer := ENetMultiplayerPeer.new()
 	var error := new_peer.create_client(ip_address, PORT)
 	if error != OK:
-		push_error("Não foi possível conectar ao servidor %s:%d: %s" % [ip_address, PORT, error_string(error)])
+		push_error("Could not connect to the server %s:%d: %s" % [ip_address, PORT, error_string(error)])
 		return
 
 	peer = new_peer
@@ -224,24 +228,24 @@ func start_client(ip_address: String) -> void:
 
 func start_client_by_room_code(room_code: String) -> void:
 	if peer != null:
-		push_warning("Uma conexão multiplayer já foi iniciada.")
+		push_warning("A multiplayer connection is already active.")
 		return
 
 	var requested_code := room_code.strip_edges()
 	if not _is_valid_room_code(requested_code):
-		push_error("Digite um código de sala válido com 6 dígitos.")
+		push_error("Type a valid room code with 6 digits.")
 		return
 
 	var rooms: Array[Dictionary] = await _query_rooms(requested_code)
 	if rooms.is_empty():
-		push_error("A sala %s não foi encontrada na rede local." % requested_code)
+		push_error("Room %s was not found on the local network." % requested_code)
 		return
 
 	start_client(rooms[0]["host_ip"])
 
 func discover_rooms() -> void:
 	if peer != null:
-		push_warning("Desconecte-se antes de procurar salas.")
+		push_warning("Disconnect before searching for rooms.")
 		return
 
 	var rooms: Array[Dictionary] = await _query_rooms("")
@@ -253,14 +257,14 @@ func _query_rooms(room_code_filter: String) -> Array[Dictionary]:
 	var search_peer := PacketPeerUDP.new()
 	var error := search_peer.bind(0, "0.0.0.0")
 	if error != OK:
-		push_error("Não foi possível iniciar a busca por salas: %s" % error_string(error))
+		push_error("Could not start the room search: %s" % error_string(error))
 		return []
 
 	search_peer.set_broadcast_enabled(true)
 	error = search_peer.set_dest_address(DISCOVERY_ADDRESS, DISCOVERY_PORT)
 	if error != OK:
 		search_peer.close()
-		push_error("Não foi possível enviar a busca pela rede local: %s" % error_string(error))
+		push_error("Could not send the local network search: %s" % error_string(error))
 		return []
 
 	var request_code := room_code_filter if not room_code_filter.is_empty() else "*"
@@ -268,7 +272,7 @@ func _query_rooms(room_code_filter: String) -> Array[Dictionary]:
 	error = search_peer.put_packet(request.to_utf8_buffer())
 	if error != OK:
 		search_peer.close()
-		push_error("Não foi possível enviar a busca pela sala: %s" % error_string(error))
+		push_error("Could not send the room search: %s" % error_string(error))
 		return []
 
 	var rooms: Array[Dictionary] = []
@@ -325,8 +329,10 @@ func stop_multiplayer() -> void:
 	_player_nicknames.clear()
 	_player_characters.clear()
 	_player_ready.clear()
+	_tutorial_ready.clear()
 
 # ---------------------------------------------------------------------------
+# Voice chat tutorial - synchronized with every player in the room.
 # Match setup (characters, ready state, kick, start) - used by the lobby screen.
 # ---------------------------------------------------------------------------
 
@@ -472,4 +478,75 @@ func start_match() -> void:
 @rpc("authority", "call_local", "reliable")
 func _start_match() -> void:
 	match_started.emit()
+
+func reset_tutorial() -> void:
+	_tutorial_ready.clear()
+	_emit_tutorial_progress()
+
+func is_tutorial_ready(peer_id: int) -> bool:
+	return _tutorial_ready.has(peer_id)
+
+func get_tutorial_ready_count() -> int:
+	return _tutorial_ready.size()
+
+func get_tutorial_total_count() -> int:
+	var total := _player_nicknames.size()
+	return total if total > 0 else 1
+
+func mark_local_tutorial_ready() -> void:
+	if peer == null:
+		# Solo: nothing to synchronize, this player is the whole room.
+		_tutorial_ready[1] = true
+		_emit_tutorial_progress()
+		tutorial_finished.emit()
+		return
+
+	if multiplayer.is_server():
+		_set_tutorial_ready(multiplayer.get_unique_id())
+	else:
+		_submit_tutorial_ready.rpc_id(1)
+
+func _set_tutorial_ready(peer_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_sync_tutorial_ready.rpc(peer_id)
+	_check_tutorial_complete()
+
+@rpc("any_peer", "call_remote", "reliable")
+func _submit_tutorial_ready() -> void:
+	if not multiplayer.is_server():
+		return
+	_set_tutorial_ready(multiplayer.get_remote_sender_id())
+
+@rpc("authority", "call_local", "reliable")
+func _sync_tutorial_ready(peer_id: int) -> void:
+	_tutorial_ready[peer_id] = true
+	_emit_tutorial_progress()
+
+func _emit_tutorial_progress() -> void:
+	tutorial_progress_changed.emit(get_tutorial_ready_count(), get_tutorial_total_count())
+
+func _check_tutorial_complete() -> void:
+	# Only the host decides when everybody is done.
+	if not multiplayer.is_server():
+		return
+	if _player_nicknames.is_empty():
+		return
+	for peer_id in _player_nicknames.keys():
+		if not _tutorial_ready.has(peer_id):
+			return
+	_finish_tutorial.rpc()
+
+func host_skip_tutorial() -> void:
+	# The host may skip the tutorial for everyone.
+	if peer == null:
+		tutorial_finished.emit()
+		return
+	if not multiplayer.is_server():
+		return
+	_finish_tutorial.rpc()
+
+@rpc("authority", "call_local", "reliable")
+func _finish_tutorial() -> void:
+	tutorial_finished.emit()
 

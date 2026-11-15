@@ -63,74 +63,94 @@ polygon = PackedVector2Array(-1500, -20, 1500, -20, 1500, 20, -1500, 20)
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
-[node name="PanelHolder" type="Control" parent="CanvasLayer"]
-offset_left = 50.0
-offset_top = 198.0
-offset_right = 660.0
-offset_bottom = 620.0
+[node name="Root" type="HBoxContainer" parent="CanvasLayer"]
+offset_left = 40.0
+offset_top = 232.0
+offset_right = 1112.0
+offset_bottom = 612.0
+theme_override_constants/separation = 16
 
-[node name="Panel" type="PanelContainer" parent="CanvasLayer/PanelHolder"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="LeftPanel" type="PanelContainer" parent="CanvasLayer/Root"]
+layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="Root" type="VBoxContainer" parent="CanvasLayer/PanelHolder/Panel"]
+[node name="LeftVBox" type="VBoxContainer" parent="CanvasLayer/Root/LeftPanel"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="CanvasLayer/PanelHolder/Panel/Root"]
+[node name="Title" type="Label" parent="CanvasLayer/Root/LeftPanel/LeftVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.62, 0.98, 1)
-theme_override_font_sizes/font_size = 26
-text = "ENTRAR EM UMA SALA"
+theme_override_font_sizes/font_size = 24
+text = "AVAILABLE ROOMS"
 horizontal_alignment = 1
 
-[node name="VoiceIndicator" type="Button" parent="CanvasLayer/PanelHolder/Panel/Root"]
+[node name="FindRooms" type="Button" parent="CanvasLayer/Root/LeftPanel/LeftVBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "SEARCH ROOMS ON LAN"
+
+[node name="RoomList" type="ItemList" parent="CanvasLayer/Root/LeftPanel/LeftVBox"]
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RoomHint" type="Label" parent="CanvasLayer/Root/LeftPanel/LeftVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.66, 0.62, 0.74, 1)
+theme_override_font_sizes/font_size = 16
+text = "Select a room on the list, or use the code on the right."
+autowrap_mode = 2
+
+[node name="RightPanel" type="PanelContainer" parent="CanvasLayer/Root"]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+
+[node name="RightVBox" type="VBoxContainer" parent="CanvasLayer/Root/RightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="CanvasLayer/Root/RightPanel/RightVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.62, 0.98, 1)
+theme_override_font_sizes/font_size = 24
+text = "JOIN WITH CODE"
+horizontal_alignment = 1
+
+[node name="VoiceIndicator" type="Button" parent="CanvasLayer/Root/RightPanel/RightVBox"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "Microfone Desligado"
+text = "Microphone Off"
 
-[node name="Nickname" type="LineEdit" parent="CanvasLayer/PanelHolder/Panel/Root"]
+[node name="Nickname" type="LineEdit" parent="CanvasLayer/Root/RightPanel/RightVBox"]
 layout_mode = 2
-placeholder_text = "Seu apelido"
+placeholder_text = "Your nickname"
 max_length = 16
 
-[node name="FindRooms" type="Button" parent="CanvasLayer/PanelHolder/Panel/Root"]
-custom_minimum_size = Vector2(0, 44)
+[node name="RoomCode" type="LineEdit" parent="CanvasLayer/Root/RightPanel/RightVBox"]
 layout_mode = 2
-text = "BUSCAR SALAS NA REDE"
+placeholder_text = "Room code (6 digits)"
 
-[node name="RoomList" type="ItemList" parent="CanvasLayer/PanelHolder/Panel/Root"]
-custom_minimum_size = Vector2(0, 150)
+[node name="JoinStatus" type="Label" parent="CanvasLayer/Root/RightPanel/RightVBox"]
 layout_mode = 2
-
-[node name="RoomCode" type="LineEdit" parent="CanvasLayer/PanelHolder/Panel/Root"]
-layout_mode = 2
-placeholder_text = "Código da sala (6 dígitos)"
-
-[node name="JoinStatus" type="Label" parent="CanvasLayer/PanelHolder/Panel/Root"]
-layout_mode = 2
+size_flags_vertical = 3
 theme_override_font_sizes/font_size = 18
-text = "Busque salas ou digite um código."
+text = "Search rooms or type a code."
 autowrap_mode = 2
 
-[node name="Client" type="Button" parent="CanvasLayer/PanelHolder/Panel/Root"]
+[node name="Client" type="Button" parent="CanvasLayer/Root/RightPanel/RightVBox"]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
-text = "ENTRAR NA SALA"
+text = "JOIN ROOM"
 
-[node name="Back" type="Button" parent="CanvasLayer/PanelHolder/Panel/Root"]
+[node name="Back" type="Button" parent="CanvasLayer/Root/RightPanel/RightVBox"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-text = "VOLTAR"
+text = "BACK"
 
 [node name="Microphone" type="AudioStreamPlayer" parent="."]
 stream = SubResource("AudioStreamMicrophone_j3pel")
 volume_db = 24.0
-

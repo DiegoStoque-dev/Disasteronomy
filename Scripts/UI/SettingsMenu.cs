@@ -11,17 +11,17 @@ using System.Collections.Generic;
 public partial class SettingsMenu : CanvasLayer
 {
     [Signal]
-    public delegate void VoltarPressedEventHandler();
+    public delegate void BackPressedEventHandler();
 
     // Friendly names shown next to each remappable action.
     private static readonly Dictionary<string, string> ActionNames = new()
     {
-        { "mover_esquerda", "Andar para a esquerda" },
-        { "mover_direita", "Andar para a direita" },
-        { "pular", "Pular" },
-        { "dash", "Dash (impulso)" },
-        { "correr", "Correr" },
-        { "voice_chat", "Chat de Voz" },
+        { "move_left",  "Walk left" },
+        { "move_right", "Walk right" },
+        { "jump",       "Jump" },
+        { "dash",       "Dash" },
+        { "run",        "Run" },
+        { "voice_chat", "Voice chat" },
     };
 
     private const float FadeInTime = 0.25f;
@@ -56,7 +56,7 @@ public partial class SettingsMenu : CanvasLayer
         _tween.TweenProperty(_root, "modulate:a", 1.0f, FadeInTime);
     }
 
-    /// <summary>Fades the settings panel out, then emits VoltarPressed.</summary>
+    /// <summary>Fades the settings panel out, then emits BackPressed.</summary>
     public void HideWithFade()
     {
         if (_root == null || !Visible)
@@ -69,7 +69,7 @@ public partial class SettingsMenu : CanvasLayer
         _tween.Finished += () =>
         {
             Visible = false;
-            EmitSignal(SignalName.VoltarPressed);
+            EmitSignal(SignalName.BackPressed);
         };
     }
 
@@ -106,24 +106,24 @@ public partial class SettingsMenu : CanvasLayer
         vbox.AddThemeConstantOverride("separation", 10);
         panel.AddChild(vbox);
 
-        vbox.AddChild(MakeTitle("CONFIGURAÇÕES", 24));
-        vbox.AddChild(MakeTitle("CONTROLES", 18));
+        vbox.AddChild(MakeTitle("SETTINGS", 24));
+        vbox.AddChild(MakeTitle("CONTROLS", 18));
         BuildInputRows(vbox);
-        vbox.AddChild(MakeTitle("VÍDEO", 18));
+        vbox.AddChild(MakeTitle("VIDEO", 18));
         BuildVideoRows(vbox);
-        vbox.AddChild(MakeTitle("ÁUDIO", 18));
+        vbox.AddChild(MakeTitle("AUDIO", 18));
         BuildAudioRows(vbox);
 
         Label help = new()
         {
-            Text = "Clique em uma tecla e depois aperte a nova tecla. ESC cancela.",
+            Text = "Click a key, then press the new one. ESC cancels.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
         help.AddThemeFontSizeOverride("font_size", 12);
         help.AddThemeColorOverride("font_color", new Color(0.75f, 0.75f, 0.75f));
         vbox.AddChild(help);
 
-        Button back = new() { Text = "VOLTAR", CustomMinimumSize = new Vector2(0, 40) };
+        Button back = new() { Text = "BACK", CustomMinimumSize = new Vector2(0, 40) };
         back.Pressed += HideWithFade;
         vbox.AddChild(back);
     }
@@ -180,7 +180,7 @@ public partial class SettingsMenu : CanvasLayer
 
         Label label = new()
         {
-            Text = "Volume da música",
+            Text = "Music volume",
             CustomMinimumSize = new Vector2(200, 0),
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
         };
@@ -211,14 +211,14 @@ public partial class SettingsMenu : CanvasLayer
         // Fullscreen toggle.
         HBoxContainer fullscreenRow = new();
         fullscreenRow.AddThemeConstantOverride("separation", 10);
-        Label fullscreenLabel = new() { Text = "Modo de exibição", CustomMinimumSize = new Vector2(200, 0) };
+        Label fullscreenLabel = new() { Text = "Display mode", CustomMinimumSize = new Vector2(200, 0) };
         fullscreenLabel.AddThemeFontSizeOverride("font_size", 16);
         fullscreenLabel.AddThemeColorOverride("font_color", Colors.White);
         fullscreenRow.AddChild(fullscreenLabel);
 
         CheckButton fullscreenToggle = new()
         {
-            Text = "Tela cheia",
+            Text = "Fullscreen",
             ButtonPressed = global.IsFullscreen,
         };
         fullscreenToggle.AddThemeColorOverride("font_color", Colors.White);
@@ -229,7 +229,7 @@ public partial class SettingsMenu : CanvasLayer
         // Resolution selector.
         HBoxContainer resolutionRow = new();
         resolutionRow.AddThemeConstantOverride("separation", 10);
-        Label resolutionLabel = new() { Text = "Resolução", CustomMinimumSize = new Vector2(200, 0) };
+        Label resolutionLabel = new() { Text = "Resolution", CustomMinimumSize = new Vector2(200, 0) };
         resolutionLabel.AddThemeFontSizeOverride("font_size", 16);
         resolutionLabel.AddThemeColorOverride("font_color", Colors.White);
         resolutionRow.AddChild(resolutionLabel);
@@ -252,7 +252,7 @@ public partial class SettingsMenu : CanvasLayer
     private void StartAwaitingKey(string action, Button button)
     {
         _actionAwaitingKey = action;
-        button.Text = "Aperte uma tecla...";
+        button.Text = "Press a key...";
     }
 
     public override void _UnhandledInput(InputEvent @event)

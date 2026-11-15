@@ -25,10 +25,10 @@ public partial class Global : Node
     /// <summary>Menu music volume, 0..1.</summary>
     public float MusicVolume { get; private set; } = 0.7f;
 
-    // Remappable actions (matching Input Map)
+    // Remappable input actions (must match the Input Map in project.godot).
     public static readonly string[] RemappableActions =
     {
-        "mover_esquerda", "mover_direita", "pular", "dash", "correr", "voice_chat"
+        "move_left", "move_right", "jump", "dash", "run", "voice_chat"
     };
 
     private const string SettingsPath = "user://settings.cfg";

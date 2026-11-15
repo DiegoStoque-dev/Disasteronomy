@@ -54,7 +54,7 @@ public partial class Player : CharacterBody2D
 		{
 			// Single-player: the node is not a networked player id, just show a default name.
 			playerId = 0;
-			UpdateNickname("Jogador");
+			UpdateNickname("Player");
 		}
 
 		sprite = GetNode<AnimatedSprite2D>("AnimatedSprite2D");
@@ -72,7 +72,7 @@ public partial class Player : CharacterBody2D
 			camera.Enabled = IsMultiplayerAuthority();
 
 		if (IsMultiplayerAuthority())
-			GD.Print("Controlando meu personagem: " + Name);
+			GD.Print("Controlling my character: " + Name);
 
 		ApplySavedState();
 		EnsureSinglePlayerGround();
@@ -186,7 +186,7 @@ public partial class Player : CharacterBody2D
 
 		float horizontal = Input.GetAxis("ui_left", "ui_right");
 		if (Mathf.Abs(horizontal) < 0.01f)
-			horizontal = Input.GetAxis("mover_esquerda", "mover_direita");
+			horizontal = Input.GetAxis("move_left", "move_right");
 
 		if (Mathf.Abs(horizontal) > 0.01f)
 			facing = horizontal < 0 ? "left" : "right";
@@ -197,7 +197,7 @@ public partial class Player : CharacterBody2D
 			? CoyoteTime
 			: Mathf.Max(0, coyoteTimeRemaining - frameDelta);
 
-		if (Input.IsActionJustPressed("pular"))
+		if (Input.IsActionJustPressed("jump"))
 			jumpBufferTimeRemaining = JumpBufferTime;
 		else
 			jumpBufferTimeRemaining = Mathf.Max(0, jumpBufferTimeRemaining - frameDelta);
@@ -248,7 +248,7 @@ public partial class Player : CharacterBody2D
 		if (texture == null || texture.GetWidth() % SpriteFrameWidth != 0 ||
 			texture.GetHeight() < SpriteFrameHeight)
 		{
-			GD.PushError($"A textura da animação {animationName} está ausente ou tem dimensões inválidas: {texturePath}");
+			GD.PushError($"Animation texture {animationName} is missing or has invalid dimensions: {texturePath}");
 			return;
 		}
 
@@ -293,7 +293,7 @@ public partial class Player : CharacterBody2D
 			return;
 
 		nicknameLabel.Text = string.IsNullOrWhiteSpace(nickname)
-			? $"Jogador {playerId}"
+			? $"Player {playerId}"
 			: nickname;
 	}
 

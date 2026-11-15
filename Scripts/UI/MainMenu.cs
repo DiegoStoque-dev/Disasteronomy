@@ -25,6 +25,9 @@ public partial class MainMenu : Control
     private Control? _menuStart;
     private Control? _menuMultiplayer;
     private SettingsMenu? _settingsMenu;
+    private PanelContainer? _toastPanel;
+    private Label? _toastLabel;
+    private Tween? _toastTween;
     private bool _switching;
 
     public override void _Ready()
@@ -48,7 +51,7 @@ public partial class MainMenu : Control
         // Phase 1: settings overlay built in code, added on top of the menu.
         _settingsMenu = new SettingsMenu();
         AddChild(_settingsMenu);
-        _settingsMenu.VoltarPressed += OnSettingsClosed;
+        _settingsMenu.BackPressed += OnSettingsClosed;
 
         ConnectButtons(_menuContainer, new (string, System.Action)[]
         {
@@ -212,7 +215,75 @@ public partial class MainMenu : Control
             GetTree().ChangeSceneToFile(GameScenePath);
     }
 
-    private void OnLoadPressed() => StartGame(newRun: false);
+    /// <summary>
+    /// Load Game: continues the stored run. When there is no save file yet,
+    /// a message tells the player to start a New Game instead.
+    /// </summary>
+    private void OnLoadPressed()
+    {
+        Global? global = GetNodeOrNull<Global>("/root/Global");
+        if (global == null || !global.HasSave())
+        {
+            ShowToast("No saved game found. Start a New Game first.");
+            return;
+        }
+
+        StartGame(newRun: false);
+    }
+
+    /// <summary>Shows a short message at the bottom of the menu.</summary>
+    private void ShowToast(string text)
+    {
+        EnsureToast();
+        if (_toastPanel == null || _toastLabel == null)
+            return;
+
+        _toastLabel.Text = text;
+        _toastPanel.Visible = true;
+
+        if (_toastTween != null && _toastTween.IsValid())
+            _toastTween.Kill();
+
+        _toastTween = CreateTween();
+        _toastTween.TweenProperty(_toastPanel, "modulate:a", 1.0f, 0.2f);
+        _toastTween.TweenInterval(2.6f);
+        _toastTween.TweenProperty(_toastPanel, "modulate:a", 0.0f, 0.4f);
+        _toastTween.Finished += () =>
+        {
+            if (_toastPanel != null)
+                _toastPanel.Visible = false;
+        };
+    }
+
+    private void EnsureToast()
+    {
+        if (_toastPanel != null)
+            return;
+
+        // Absolute offsets in the base resolution (1152x648), so the toast is
+        // independent from the tiny rect of the menu root Control.
+        _toastPanel = new PanelContainer
+        {
+            Visible = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            Modulate = new Color(1, 1, 1, 0),
+            OffsetLeft = 246f,
+            OffsetTop = 540f,
+            OffsetRight = 906f,
+            OffsetBottom = 604f,
+        };
+        AddChild(_toastPanel);
+
+        _toastLabel = new Label
+        {
+            Text = "",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        _toastLabel.AddThemeFontSizeOverride("font_size", 18);
+        _toastPanel.AddChild(_toastLabel);
+    }
 
     /// <summary>
     /// New Game always opens a fresh match setup screen, which also creates the

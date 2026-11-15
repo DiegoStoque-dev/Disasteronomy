@@ -13,7 +13,7 @@ public partial class MatchSetup : Control
 {
     private const string HandlerPath = "/root/HighLevelNetworkHandler";
     private const string MainMenuScenePath = "res://Scenes/MainMenu.tscn";
-    private const string CutsceneScenePath = "res://Scenes/Cutscene.tscn";
+    private const string CutsceneScenePath = "res://Scenes/Cutscenes/Cutscene2.tscn";
     private const string SpaceshipSheetPath = "res://Sprites/UI/MainMenu/main menu/spaceship sheet.png";
 
     private const int ShipFrameWidth = 384;
@@ -31,7 +31,7 @@ public partial class MatchSetup : Control
     private const float PreviewScale = 8f;
 
     private Node? _handler;
-    private AnimatedSprite2D? _ship;
+    private SpaceshipMotion? _ship;
     private AnimatedSprite2D? _preview;
     private Label? _previewName;
     private Control? _panel;
@@ -55,7 +55,7 @@ public partial class MatchSetup : Control
     {
         _handler = GetNodeOrNull(HandlerPath);
 
-        _ship = GetNodeOrNull<AnimatedSprite2D>("Spaceship");
+        _ship = GetNodeOrNull<SpaceshipMotion>("Spaceship");
         _preview = GetNodeOrNull<AnimatedSprite2D>("CharacterPreview");
         _previewName = GetNodeOrNull<Label>("PreviewName");
         _panel = GetNodeOrNull<Control>("PanelHolder");
@@ -132,15 +132,19 @@ public partial class MatchSetup : Control
         _ship.Animation = "fly";
         _ship.Play();
 
-        // Starts exactly where the ship rests on the main menu, holds for a beat
+        // The ship starts exactly where it rests on the main menu, holds for a beat
         // and then accelerates to the left until it leaves the screen.
+        // The drifting motion keeps running during the whole departure and extra
+        // tugs are layered on X (see SpaceshipMotion.StartDeparture).
         _ship.Position = new Vector2(ShipStartX, ShipStartY);
+        _ship.BasePosition = _ship.Position;
         _ship.Scale = new Vector2(ShipScale, ShipScale);
         _ship.Rotation = 0f;
 
         Tween tween = CreateTween();
         tween.TweenInterval(ShipHoldTime);
-        tween.TweenProperty(_ship, "position", new Vector2(ShipEndX, ShipEndY), FlybyDuration)
+        tween.TweenCallback(Callable.From(_ship.StartDeparture));
+        tween.TweenProperty(_ship, "BasePosition", new Vector2(ShipEndX, ShipEndY), FlybyDuration)
              .SetTrans(Tween.TransitionType.Quad)
              .SetEase(Tween.EaseType.In); // accelerating, not constant speed
         tween.Finished += RevealPanel;
@@ -230,8 +234,8 @@ public partial class MatchSetup : Control
 
         string code = _handler?.Call("get_room_code").AsString() ?? string.Empty;
         _codeLabel.Text = string.IsNullOrEmpty(code)
-            ? "Código da sala: (sem rede)"
-            : $"Código da sala: {code}";
+            ? "Room code: (offline)"
+            : $"Room code: {code}";
     }
 
     private void RebuildRows()
@@ -300,8 +304,8 @@ public partial class MatchSetup : Control
             CustomMinimumSize = new Vector2(RowHeight, RowHeight),
             SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
             TooltipText = isMe
-                ? "Clique para trocar de personagem"
-                : $"Personagem de {GetNickname(id)}",
+                ? "Click to switch character"
+                : $"{GetNickname(id)}'s character",
         };
         StyleBoxFlat colorStyle = FlatBox(Characters.GetColor(character), 4);
         colorBox.AddThemeStyleboxOverride("normal", colorStyle);
@@ -331,7 +335,7 @@ public partial class MatchSetup : Control
             CustomMinimumSize = new Vector2(0, RowHeight),
             MaxLength = 16,
             Editable = isMe || _isHost,
-            TooltipText = "Editar apelido",
+            TooltipText = "Edit nickname",
         };
         nickname.FocusEntered += () => SelectPlayer(id);
         nickname.TextSubmitted += text => OnNicknameSubmitted(id, text);
@@ -344,7 +348,7 @@ public partial class MatchSetup : Control
         Button readyButton = new()
         {
             CustomMinimumSize = new Vector2(RowHeight, RowHeight),
-            TooltipText = ready ? "Pronto" : "Não está pronto",
+            TooltipText = ready ? "Ready" : "Not ready",
             Disabled = !isMe,
         };
         StyleBoxFlat readyStyle = FlatBox(
@@ -365,7 +369,7 @@ public partial class MatchSetup : Control
             {
                 Text = "X",
                 CustomMinimumSize = new Vector2(RowHeight, RowHeight),
-                TooltipText = "Remover jogador",
+                TooltipText = "Remove player",
             };
             removeButton.AddThemeColorOverride("font_color", new Color(0.95f, 0.25f, 0.25f));
             removeButton.Pressed += () => OnRemovePressed(id);
@@ -406,13 +410,13 @@ public partial class MatchSetup : Control
 
         if (_isHost && _ids.Count <= 1)
         {
-            _statusLabel.Text = "Modo solo: marque-se como pronto para iniciar.";
+            _statusLabel.Text = "Solo match: mark yourself as ready to start.";
             return;
         }
 
         _statusLabel.Text = readyCount == _ids.Count
-            ? "Todos prontos! O host já pode iniciar."
-            : $"{readyCount} de {_ids.Count} prontos.";
+            ? "Everyone is ready! The host can start."
+            : $"{readyCount} of {_ids.Count} ready.";
     }
 
     private void RefreshStartButton()
@@ -514,7 +518,7 @@ public partial class MatchSetup : Control
                 return local;
         }
 
-        return $"Jogador {id}";
+        return $"Player {id}";
     }
 
     // ------------------------------------------------------------------
@@ -642,7 +646,7 @@ public partial class MatchSetup : Control
         if (_leaving)
             return;
 
-        GD.Print("[MatchSetup] Conexão com o servidor perdida.");
+        GD.Print("[MatchSetup] Connection to the host was lost.");
         OnBackPressed();
     }
 
@@ -657,7 +661,7 @@ public partial class MatchSetup : Control
 
     private void OnPeerActivity(long id, bool joined)
     {
-        GD.Print($"[MatchSetup] Jogador {id} {(joined ? "entrou" : "saiu")}.");
+        GD.Print($"[MatchSetup] Player {id} {(joined ? "joined" : "left")}.");
         RequestRefresh();
     }
 

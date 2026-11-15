@@ -1,9 +1,10 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://Scripts/UI/IntroCutscene.cs" id="1_cutscene"]
 [ext_resource type="VideoStream" path="res://Sprites/cutscenes/cutscene2.ogv" id="2_video"]
+[ext_resource type="PackedScene" path="res://Scenes/Cutscenes/VoiceTutorial.tscn" id="3_tutorial"]
 
-[node name="Cutscene" type="Control"]
+[node name="Cutscene2" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,9 +12,11 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_cutscene")
-NextScenePath = "res://Scenes/MainMenu.tscn"
+NextScenePath = "res://Scenes/Cutscenes/Cutscene1.tscn"
 AllowSkip = true
 AutoAdvance = false
+TutorialPath = NodePath("VoiceTutorial")
+TutorialAtSeconds = 0.0
 
 [node name="Video" type="VideoStreamPlayer" parent="."]
 layout_mode = 1
@@ -25,3 +28,6 @@ grow_vertical = 2
 mouse_filter = 2
 stream = ExtResource("2_video")
 expand = true
+
+[node name="VoiceTutorial" parent="." instance=ExtResource("3_tutorial")]
+visible = false

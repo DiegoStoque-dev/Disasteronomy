@@ -15,6 +15,7 @@
 [ext_resource type="Script" uid="uid://bxnifvm0uvbt0" path="res://Scripts/UI/MainMenu.cs" id="13_fh7cp"]
 [ext_resource type="Script" path="res://Scripts/UI/SpaceshipMotion.cs" id="14_ship"]
 [ext_resource type="Script" path="res://Scripts/Effects/Starfield.cs" id="15_starfield"]
+[ext_resource type="Script" path="res://Scripts/Effects/MouseParallax.cs" id="16_parallax"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ydj5n"]
 atlas = ExtResource("1_loo7a")
@@ -752,4 +753,23 @@ texture_normal = ExtResource("12_fh7cp")
 [node name="BtnMultiplayerBack" type="TextureButton" parent="MenuMultiplayer" unique_id=1376502234]
 layout_mode = 2
 size_flags_horizontal = 0
+
+[node name="BackgroundParallax" type="Node" parent="."]
+script = ExtResource("16_parallax")
+TargetPath = NodePath("StarfieldLayer")
+Strength = Vector2(22, 12)
+Smoothing = 3.0
+
+[node name="TitleParallax" type="Node" parent="."]
+script = ExtResource("16_parallax")
+TargetPath = NodePath("background/Titel")
+Strength = Vector2(210, 95)
+Smoothing = 4.0
+
+[node name="ShipParallax" type="Node" parent="."]
+script = ExtResource("16_parallax")
+TargetPath = NodePath("background/Spaceship")
+Strength = Vector2(260, 130)
+Smoothing = 3.5
+
 texture_normal = ExtResource("6_loo7a")

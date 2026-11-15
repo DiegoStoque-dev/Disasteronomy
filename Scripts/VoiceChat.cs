@@ -19,7 +19,7 @@ public partial class VoiceChat : Node
 
 	public override void _Ready()
 	{
-		GD.Print("VOICE CHAT INICIADO!");
+		GD.Print("VOICE CHAT STARTED!");
 
 		// The indicator lives in the lobby panel, not under this node, so look it up
 		// from the scene root as well (FindChild only searches this node's own subtree).
@@ -30,21 +30,21 @@ public partial class VoiceChat : Node
 
 		if (voiceIndicator == null)
 		{
-			GD.PrintErr("VoiceIndicator não encontrado!");
+			GD.PrintErr("VoiceIndicator not found.");
 			SetProcess(false);
 			return;
 		}
 
 		if (microphonePlayer == null)
 		{
-			GD.PrintErr("Nó Microphone não encontrado.");
+			GD.PrintErr("Microphone node not found.");
 			SetProcess(false);
 			return;
 		}
 
 		if (AudioServer.GetBusIndex("Microphone") < 0)
 		{
-			GD.PrintErr("Barramento Microphone não encontrado!");
+			GD.PrintErr("Microphone audio bus not found.");
 			SetProcess(false);
 			return;
 		}
@@ -53,20 +53,20 @@ public partial class VoiceChat : Node
 
 		voiceIndicator.MouseFilter = Control.MouseFilterEnum.Ignore;
 		voiceIndicator.FocusMode = Control.FocusModeEnum.None;
-		voiceIndicator.Text = "Microfone desligado";
+		voiceIndicator.Text = "Microphone off";
 		voiceIndicator.Modulate = Colors.Gray;
 
-		// Procura o barramento do microfone
+		// Look up the microphone audio bus.
 		int busIndex = AudioServer.GetBusIndex("Microphone");
 
 		if (busIndex == -1)
 		{
-			GD.PrintErr("Barramento Microphone não encontrado!");
+			GD.PrintErr("Microphone audio bus not found.");
 			SetProcess(false);
 			return;
 		}
 
-		// Procura o AudioEffectCapture
+		// Look for the AudioEffectCapture on that bus.
 		for (int i = 0; i < AudioServer.GetBusEffectCount(busIndex); i++)
 		{
 			AudioEffect effect = AudioServer.GetBusEffect(busIndex, i);
@@ -80,19 +80,19 @@ public partial class VoiceChat : Node
 
 		if (capture == null)
 		{
-			GD.PrintErr("AudioEffectCapture não encontrado!");
+			GD.PrintErr("AudioEffectCapture not found.");
 			SetProcess(false);
 			return;
 		}
 
-		GD.Print("Sistema de voz preparado!");
+		GD.Print("Voice system ready!");
 	}
 
 	public override void _Process(double delta)
 	{
 		bool pressed = Input.IsActionPressed("voice_chat");
 
-		// Ativa o microfone
+		// Turn the microphone on.
 		if (pressed && !microphoneEnabled)
 		{
 			microphoneEnabled = true;
@@ -101,14 +101,14 @@ public partial class VoiceChat : Node
 
 			if (voiceIndicator != null)
 			{
-				voiceIndicator.Text = "Falando...";
+				voiceIndicator.Text = "Talking...";
 				voiceIndicator.Modulate = Colors.LimeGreen;
 			}
 
-			GD.Print("Microfone ativado!");
+			GD.Print("Microphone enabled!");
 		}
 
-		// Desativa o microfone
+		// Turn the microphone off.
 		else if (!pressed && microphoneEnabled)
 		{
 			microphoneEnabled = false;
@@ -117,11 +117,11 @@ public partial class VoiceChat : Node
 
 			if (voiceIndicator != null)
 			{
-				voiceIndicator.Text = "Microfone desligado";
+				voiceIndicator.Text = "Microphone off";
 				voiceIndicator.Modulate = Colors.Gray;
 			}
 
-			GD.Print("Microfone desativado!");
+			GD.Print("Microphone disabled!");
 		}
 
 		if (!microphoneEnabled || capture == null)
@@ -130,13 +130,13 @@ public partial class VoiceChat : Node
 		if (Multiplayer.MultiplayerPeer == null)
 			return;
 
-		// Captura os quadros de áudio
+		// Grab the captured audio frames.
 		int available = capture.GetFramesAvailable();
 		debugTimer += delta;
 
 if (debugTimer >= 1.0)
 {
-	GD.Print("Quadros disponíveis: ", available);
+	GD.Print("Frames available: ", available);
 	debugTimer = 0;
 }
 		if (available >= FramesPerPacket)
@@ -145,12 +145,12 @@ if (debugTimer >= 1.0)
 
 			byte[] packet = EncodeAudio(samples);
 
-			// Host envia sua própria voz
+			// Host sends its own voice.
 			if (Multiplayer.IsServer())
 			{
 				BroadcastVoice(Multiplayer.GetUniqueId(), packet);
 			}
-			// Cliente envia ao host
+			// Client sends to the host.
 			else if (
 				Multiplayer.MultiplayerPeer
 					.GetConnectionStatus()
@@ -162,7 +162,7 @@ if (debugTimer >= 1.0)
 		}
 	}
 
-	// Converte áudio para mono de 16 bits
+	// Converts audio to 16-bit mono.
 	private byte[] EncodeAudio(Vector2[] samples)
 	{
 		byte[] packet = new byte[samples.Length * 2];
@@ -182,7 +182,7 @@ if (debugTimer >= 1.0)
 		return packet;
 	}
 
-	// Recebe áudio enviado pelos clientes
+	// Receives the audio sent by clients.
 	[Rpc(
 		MultiplayerApi.RpcMode.AnyPeer,
 		CallLocal = false,

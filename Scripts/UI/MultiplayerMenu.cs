@@ -3,22 +3,23 @@ using Godot;
 using System.Collections.Generic;
 
 /// <summary>
-/// Multiplayer screen: lists the available rooms and lets the player join one
-/// by picking it from the list or typing its code.
-/// Creating a room now belongs to Start -> New Game (see MatchSetup).
-/// A successful join goes straight to the match setup / lobby screen.
+/// Multiplayer screen: the rooms available on the LAN are listed on the left,
+/// the join-with-code options are on the right, so the horizontal space is used.
+/// Creating a room belongs to Start -> New Game (see MatchSetup), so there is no
+/// intermediate choice step here. A successful join goes to the lobby screen.
 /// </summary>
 public partial class MultiplayerMenu : Control
 {
     private const string MainMenuScenePath = "res://Scenes/MainMenu.tscn";
     private const string MatchSetupScenePath = "res://Scenes/MatchSetup.tscn";
     private const string HandlerPath = "/root/HighLevelNetworkHandler";
-    private const string RootPath = "CanvasLayer/PanelHolder/Panel/Root";
+    private const string LeftPath = "CanvasLayer/Root/LeftPanel/LeftVBox";
+    private const string RightPath = "CanvasLayer/Root/RightPanel/RightVBox";
 
     private LineEdit? _nickname;
     private LineEdit? _roomCode;
     private ItemList? _roomList;
-    private Label? _joinStatus;
+    private Label? _status;
 
     private readonly List<string> _discoveredCodes = new();
     private readonly List<string> _discoveredIps = new();
@@ -30,14 +31,14 @@ public partial class MultiplayerMenu : Control
     {
         _handler = GetNodeOrNull(HandlerPath);
 
-        _nickname = GetNodeOrNull<LineEdit>($"{RootPath}/Nickname");
-        _roomCode = GetNodeOrNull<LineEdit>($"{RootPath}/RoomCode");
-        _roomList = GetNodeOrNull<ItemList>($"{RootPath}/RoomList");
-        _joinStatus = GetNodeOrNull<Label>($"{RootPath}/JoinStatus");
+        _nickname = GetNodeOrNull<LineEdit>($"{RightPath}/Nickname");
+        _roomCode = GetNodeOrNull<LineEdit>($"{RightPath}/RoomCode");
+        _roomList = GetNodeOrNull<ItemList>($"{LeftPath}/RoomList");
+        _status = GetNodeOrNull<Label>($"{RightPath}/JoinStatus");
 
-        ConnectButton($"{RootPath}/FindRooms", OnSearchPressed);
-        ConnectButton($"{RootPath}/Client", OnJoinPressed);
-        ConnectButton($"{RootPath}/Back", LeaveToMainMenu);
+        ConnectButton($"{LeftPath}/FindRooms", OnSearchPressed);
+        ConnectButton($"{RightPath}/Client", OnJoinPressed);
+        ConnectButton($"{RightPath}/Back", LeaveToMainMenu);
 
         if (_roomList != null)
             _roomList.ItemSelected += OnRoomSelected;
@@ -87,7 +88,7 @@ public partial class MultiplayerMenu : Control
         _roomList?.Clear();
         _discoveredCodes.Clear();
         _discoveredIps.Clear();
-        SetStatus("Procurando salas na rede...");
+        SetStatus("Searching for rooms on the LAN...");
         _handler?.Call("discover_rooms");
     }
 
@@ -104,13 +105,13 @@ public partial class MultiplayerMenu : Control
 
         if (index >= 0 && index < _discoveredIps.Count)
         {
-            SetStatus($"Conectando a {_discoveredIps[index]}...");
+            SetStatus($"Connecting to {_discoveredIps[index]}...");
             _handler?.Call("start_client", _discoveredIps[index]);
             return;
         }
 
         string code = (_roomCode?.Text ?? "").Trim();
-        SetStatus($"Procurando a sala {code}...");
+        SetStatus($"Looking for room {code}...");
         _handler?.Call("start_client_by_room_code", code);
     }
 
@@ -131,14 +132,14 @@ public partial class MultiplayerMenu : Control
 
         bool ok = _handler.Call("set_local_nickname", _nickname?.Text ?? "").AsBool();
         if (!ok)
-            SetStatus("Escolha um apelido com 1 a 16 caracteres.");
+            SetStatus("Pick a nickname with 1 to 16 characters.");
         return ok;
     }
 
     private void SetStatus(string text)
     {
-        if (_joinStatus != null)
-            _joinStatus.Text = text;
+        if (_status != null)
+            _status.Text = text;
         GD.Print("[MultiplayerMenu] " + text);
     }
 
@@ -162,8 +163,8 @@ public partial class MultiplayerMenu : Control
     private void OnRoomSearchCompleted(int roomCount)
     {
         SetStatus(roomCount == 0
-            ? "Nenhuma sala encontrada."
-            : $"{roomCount} sala(s) encontrada(s).");
+            ? "No rooms found."
+            : $"{roomCount} room(s) found.");
     }
 
     private void OnConnectedToServer()
