@@ -6,10 +6,14 @@ public partial class Phase1Manager : Node2D
 {
 	public enum PhaseState { Airlock, Transit, CpsArrival, Minigame, Completed, Failed }
 
+	/// <summary>Hull edges used by the tether corner wrap (world space, one per structural segment).</summary>
+	public static readonly System.Collections.Generic.List<(Vector2 A, Vector2 B)> TetherHullSegments = new();
+
 	[Export] public Rect2 LevelBounds = new Rect2(-600, -450, 2200, 1300);
 	[Export] public Vector2 AirlockPosition = new Vector2(-400, 0);
 	[Export] public Vector2 CpsPosition = new Vector2(1400, 0);
-	[Export] public float CpsInteractRadius = 260f;
+	[Export] public float CpsInteractRadius = 130f;
+	[Export] public float CpsInteractSpeedMax = 40f;
 	[Export] public float MissionTime = 0f;
 	[Export] public string NextScenePath = "res://Scenes/Phase2/Phase2.tscn";
 
@@ -46,8 +50,8 @@ public partial class Phase1Manager : Node2D
 		state == PhaseState.Failed ||
 		(cpsMinigame != null && cpsMinigame.IsOpen);
 
-	private const string Phase1Controls = "W A S D: suit thrusters  |  Hold left mouse: reach for a handrail\nA / D or W / S: slide along the rail  |  Space: SAFER (jet fires toward the cursor, you go the other way)\nE: calibrate at the CPS  |  P: pause  |  F9: debug teleport";
-	private const string Phase1Briefing = "Two thermal actuators on the solar wings are frozen. Leave the Utility Tunnel in your EMU suit and follow the yellow handrails to the Cryogenic Propulsion Stage.\n\nStay clipped to the rails: if your tether stretches too far, it snaps. Use the SAFER nitrogen jets only for the big gaps, you have just a few charges.";
+	private const string Phase1Controls = "W A S D: suit thrusters (offline while the tether is taut)  |  Hold left mouse: reach for a handrail\nA / D or W / S: slide along the rail  |  Space: SAFER (jet fires toward the cursor, you go the other way)\nE (when slow & close to the CPS): calibrate  |  P: pause  |  F9: debug teleport  |  Right mouse (SAFER empty): climb the tether";
+	private const string Phase1Briefing = "Two thermal actuators on the solar wings are frozen. Leave the Utility Tunnel in your EMU suit and follow the yellow handrails to the Cryogenic Propulsion Stage.\n\nStay clipped to the rails and keep your swings short: the tether breaks on the THIRD full stretch. When it snaps you only keep the short arm, so save the SAFER nitrogen jets for the big gaps - you have just a few charges.";
 
 	public bool IsPlayerNearCps(Vector2 worldPos) => worldPos.DistanceTo(CpsPosition) <= CpsInteractRadius;
 
@@ -159,6 +163,14 @@ public partial class Phase1Manager : Node2D
 		}
 		spawner.SpawnPath = new NodePath(".");
 		spawner.AddSpawnableScene("res://Scenes/Phase1/EvaPlayer.tscn");
+		spawner.Spawned += OnPlayerSpawned;
+	}
+
+	/// <summary>Places multiplayer-spawned players near the airlock (inside tether reach) instead of the world origin.</summary>
+	private void OnPlayerSpawned(Node node)
+	{
+		if (node is EvaPlayer p && Multiplayer.HasMultiplayerPeer())
+			p.GlobalPosition = AirlockPosition + new Vector2(80f, 0f);
 	}
 
 	private void SetupHud()
@@ -196,24 +208,39 @@ public partial class Phase1Manager : Node2D
 			return;
 		}
 
-		hudCharges.Text = $"SAFER: {localPlayer.GetSaferCharges()}/{localPlayer.SaferChargesDefault}  (Space, jet points at cursor)";
+		string climbHint = localPlayer.GetSaferCharges() <= 0 && !localPlayer.IsRuptured
+			? "  |  Right mouse: climb the tether"
+			: "";
+		hudCharges.Text = $"SAFER: {localPlayer.GetSaferCharges()}/{localPlayer.SaferChargesDefault}  (Space, jet points at cursor){climbHint}";
 
 		float tension = localPlayer.GetTetherTension();
-		if (localPlayer.IsTetherBroken)
+		if (localPlayer.IsRuptured)
 		{
-			hudTether.Text = "Tether: BROKEN (short arm reach)";
+			hudTether.Text = "TETHER RUPTURED - SAFER ONLY";
 			hudTether.Modulate = Colors.Red;
+		}
+		else if (localPlayer.IsTetherCritical)
+		{
+			hudTether.Text = $"TETHER CRITICAL - fatigue {localPlayer.GetFatigueStrikes()}/{localPlayer.MaxFatigueStrikes}";
+			hudTether.Modulate = Colors.Red;
+		}
+		else if (localPlayer.IsTetherTaut)
+		{
+			hudTether.Text = "TETHER TAUT - THRUSTERS OFFLINE (reeling in...)";
+			hudTether.Modulate = Colors.Yellow;
 		}
 		else
 		{
 			hudTether.Text = $"Tether: {tension * 100f:F0}%";
-			hudTether.Modulate = tension > 0.8f ? Colors.Red : (tension > 0.5f ? Colors.Yellow : Colors.White);
+			hudTether.Modulate = tension > 0.8f ? Colors.Yellow : Colors.White;
 		}
 
-		hudDebug.Text = $"Pos: {localPlayer.GlobalPosition:F0} | Vel: {localPlayer.Velocity:F0} | State: {localPlayer.state} | Rope: {localPlayer.GetRopeState()} ({localPlayer.GetExtremeCount()}/{localPlayer.MaxExtremesBeforeBreak}) | F9 = teleport to CPS";
+		hudDebug.Text = $"Pos: {localPlayer.GlobalPosition:F0} | Vel: {localPlayer.Velocity:F0} | State: {localPlayer.state} | Rope: {localPlayer.GetRopeState()} | Stress: {localPlayer.GetFatigueStrikes()}/{localPlayer.MaxFatigueStrikes} | F9 = teleport to CPS";
 
 		if (state == PhaseState.CpsArrival && !localCompleted)
-			hudPrompt.Text = "Press E to calibrate the actuators";
+			hudPrompt.Text = localPlayer.Velocity.Length() < CpsInteractSpeedMax
+				? "Press E to calibrate the actuators"
+				: "Slow down to calibrate the actuators";
 		else
 			hudPrompt.Text = "";
 	}
@@ -233,6 +260,9 @@ public partial class Phase1Manager : Node2D
 
 	private void BuildLevel()
 	{
+		// Static registry persists across scene reloads: start fresh every time.
+		TetherHullSegments.Clear();
+
 		// Screen-space background only (does not move with the camera).
 		var backgroundLayer = new CanvasLayer { Name = "Background", Layer = -100 };
 		AddChild(backgroundLayer);
@@ -299,15 +329,53 @@ public partial class Phase1Manager : Node2D
 		worldLayer.AddChild(tetherAnchor);
 		tetherAnchor.AddToGroup("tether_anchor");
 
-		// Handrail path. Gaps of ~250 px (R4->R5 and R6->R7) are beyond the arm's reach: SAFER needed.
-		CreateHandrail(new Vector2(-250, 0), new Vector2(-100, 0));
-		CreateHandrail(new Vector2(-100, -40), new Vector2(-100, -140));
-		CreateHandrail(new Vector2(-100, -140), new Vector2(400, -140));
-		CreateHandrail(new Vector2(400, -140), new Vector2(400, -40));
-		CreateHandrail(new Vector2(650, 0), new Vector2(900, 0));
-		CreateHandrail(new Vector2(900, 0), new Vector2(900, 100));
-		CreateHandrail(new Vector2(1150, 140), new Vector2(1300, 140));
-		CreateHandrail(new Vector2(1300, 140), new Vector2(1300, 0));
+		// Continuous hull structure: dark plating runs under every rail and bridges the
+		// SAFER-jump gaps, so the handrails read as mounted on one continuous spacecraft hull.
+		// Hull segments are also registered for the tether's corner-wrap (order 3).
+		HullRail(new Vector2(-250, 0), new Vector2(-100, 0));
+		HullRail(new Vector2(-100, -40), new Vector2(-100, -140));
+		HullRail(new Vector2(-100, -140), new Vector2(400, -140));
+		HullRail(new Vector2(400, -140), new Vector2(400, -40));
+		HullRail(new Vector2(650, 0), new Vector2(900, 0));
+		HullRail(new Vector2(900, 0), new Vector2(900, 100));
+		HullRail(new Vector2(1150, 140), new Vector2(1300, 140));
+		HullRail(new Vector2(1300, 140), new Vector2(1300, 0));
+
+		// Hull-only truss bridges across the rail gaps (the yellow rail still needs the SAFER jump).
+		CreateHullSegment(new Vector2(-100, 0), new Vector2(-100, -40));
+		CreateHullSegment(new Vector2(400, -40), new Vector2(650, 0));
+		CreateHullSegment(new Vector2(900, 100), new Vector2(1150, 140));
+	}
+
+	private void HullRail(Vector2 from, Vector2 to)
+	{
+		CreateHullSegment(from, to);
+		CreateHandrail(from, to);
+	}
+
+	/// <summary>
+	/// Adds a dark metallic structural hull plate under a rail (or bridging a gap) and registers
+	/// its edge so the player's tether can bend around its corners instead of clipping through.
+	/// </summary>
+	private void CreateHullSegment(Vector2 a, Vector2 b)
+	{
+		Vector2 dir = b - a;
+		float len = dir.Length();
+		if (len < 0.001f) return;
+		dir /= len;
+
+		const float thickness = 16f;
+		Vector2 n = new Vector2(-dir.Y, dir.X) * (thickness * 0.5f);
+
+		string safeName = ($"{a.X}_{a.Y}_{b.X}_{b.Y}").Replace(".", "p").Replace("-", "m");
+		var hull = new Polygon2D
+		{
+			Name = "Hull_" + safeName,
+			Polygon = new Vector2[] { a + n, a - n, b - n, b + n },
+			Color = new Color(0.30f, 0.32f, 0.37f, 0.9f)
+		};
+		worldLayer.AddChild(hull);
+		TetherHullSegments.Add((a, b));
 	}
 
 	private void CreateHandrail(Vector2 start, Vector2 end)
