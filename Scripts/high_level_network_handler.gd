@@ -157,6 +157,15 @@ func _on_peer_disconnected(peer_id: int) -> void:
 	remove_participant(peer_id)
 	_remove_peer_from_barriers(peer_id)
 	_sync_player_nickname.rpc(peer_id, "")
+	# A left peer must not keep the tutorial (or any barrier) blocked: drop its
+	# state and re-evaluate so the remaining crew can continue.
+	_tutorial_ready.erase(peer_id)
+	_player_nicknames.erase(peer_id)
+	_player_characters.erase(peer_id)
+	_player_ready.erase(peer_id)
+	if multiplayer.is_server():
+		_emit_tutorial_progress()
+		_check_tutorial_complete()
 	_sync_player_character.rpc(peer_id, -1)
 	_player_ready.erase(peer_id)
 	_broadcast_peer_activity.rpc(peer_id, false)

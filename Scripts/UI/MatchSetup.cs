@@ -76,6 +76,9 @@ public partial class MatchSetup : Control
 
         ConnectNetworkSignals();
 
+        if (_handler != null)
+            _handler.Connect("rejected_after_start", Callable.From(OnRejectedAfterStart));
+
         StartFlybyThenPanel();
 
         // The session is set up after the first frame so the UI already exists.
@@ -709,6 +712,12 @@ public partial class MatchSetup : Control
             return;
 
         GD.Print("[MatchSetup] Connection to the host was lost.");
+        OnBackPressed();
+    }
+
+    private void OnRejectedAfterStart()
+    {
+        GD.Print("[MatchSetup] You tried to join after the match already started.");
         OnBackPressed();
     }
 
