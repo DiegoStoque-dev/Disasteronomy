@@ -19,8 +19,8 @@ public partial class Phase1Manager : Node2D
 	// ------------------------------------------------------------------
 	// SHIP / CAMERA
 	// ------------------------------------------------------------------
-	[Export] public string ShipTexturePath = "res://Sprites/ship_exterior.png";
-	[Export] public float ShipScale = 1f;
+	[Export] public string ShipTexturePath = "res://Sprites/map1.png";
+	[Export] public float ShipScale = 1.5f;
 	[Export] public float CameraZoom = 1f;
 	[Export] public float BoundsMargin = 40f;      // extra space around the image for bounds / camera limits.
 	[Export] public float FadeInDuration = 1.5f;   // slow fade from black at level start.
@@ -29,13 +29,13 @@ public partial class Phase1Manager : Node2D
 	// PISTOL TOOL
 	// ------------------------------------------------------------------
 	[Export] public string ToolTexturePath = "res://Sprites/pistol_tool.png";
-	[Export] public Vector2 ToolImagePos = new Vector2(760, 760); // image pixels.
+	[Export] public Vector2 ToolImagePos = new Vector2(350, 400); // image pixels.
 	[Export] public float PickupRadius = 40f;
 
 	// ------------------------------------------------------------------
 	// CPS
 	// ------------------------------------------------------------------
-	[Export] public Vector2 CpsImagePos = new Vector2(624, 344); // image pixels.
+	[Export] public Vector2 CpsImagePos = new Vector2(118, 245); // image pixels.
 
 	[Export] public float MissionTime = 0f;
 	[Export] public string NextScenePath = "res://Scenes/Phase2/Phase2.tscn";
@@ -55,12 +55,22 @@ public partial class Phase1Manager : Node2D
 
 	private readonly List<GripDef> GripDefs = new()
 	{
-		new GripDef { Pos = new Vector2(300, 300), IsStart = true, IsAirlock = true }, // start + return (side of ship)
-		new GripDef { Pos = new Vector2(410, 300) },
-		new GripDef { Pos = new Vector2(520, 270) },
-		new GripDef { Pos = new Vector2(630, 300), IsCps = true },                     // next to the CPS
-		new GripDef { Pos = new Vector2(742, 332) },
-		new GripDef { Pos = new Vector2(852, 360) },
+		new GripDef { Pos = new Vector2(45, 199), IsStart = true, IsAirlock = true }, // left bracket (start + airlock)
+		new GripDef { Pos = new Vector2(81, 189) },                                  // gold tab on top of left module
+		new GripDef { Pos = new Vector2(117, 190) },                                 // gold tab on top of left module
+		new GripDef { Pos = new Vector2(153, 189) },                                 // gold tab on top of left module
+		new GripDef { Pos = new Vector2(118, 215) },                                 // gold diamond (CPS) top
+		new GripDef { Pos = new Vector2(118, 245), IsCps = true },                   // gold diamond (CPS) center
+		new GripDef { Pos = new Vector2(118, 278) },                                 // gold diamond (CPS) bottom
+		new GripDef { Pos = new Vector2(214, 218) },                                 // top tab at solar panel base
+		new GripDef { Pos = new Vector2(272, 218) },                                 // top tab at solar panel base
+		new GripDef { Pos = new Vector2(244, 200) },                                 // long vertical gold rail
+		new GripDef { Pos = new Vector2(244, 155) },                                 // long vertical gold rail
+		new GripDef { Pos = new Vector2(244, 110) },                                 // long vertical gold rail
+		new GripDef { Pos = new Vector2(244, 65) },                                  // long vertical gold rail
+		new GripDef { Pos = new Vector2(244, 20) },                                  // long vertical gold rail
+		new GripDef { Pos = new Vector2(214, 278) },                                 // bottom tab at solar panel base
+		new GripDef { Pos = new Vector2(272, 278) },                                 // bottom tab at solar panel base
 	};
 
 	private const float TetherValidationMargin = 40f;
