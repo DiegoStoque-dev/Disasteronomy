@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://Scripts/UI/IntroCutscene.cs" id="1_cutscene"]
 [ext_resource type="VideoStream" path="res://Sprites/cutscenes/cutscene2.ogv" id="2_video"]
-[ext_resource type="PackedScene" path="res://Scenes/Cutscenes/VoiceTutorial.tscn" id="3_tutorial"]
+[ext_resource type="PackedScene" path="res://Scenes/Cutscenes/TabTutorial.tscn" id="3_tab"]
+[ext_resource type="PackedScene" path="res://Scenes/UI/ObjectiveHud.tscn" id="4_hud"]
 
 [node name="Cutscene2" type="Control"]
 layout_mode = 3
@@ -12,11 +13,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_cutscene")
-NextScenePath = "res://Scenes/Cutscenes/Cutscene1.tscn"
+NextScenePath = "res://Scenes/Cutscenes/Cutscene3.tscn"
 AllowSkip = true
 AutoAdvance = false
-TutorialPath = NodePath("VoiceTutorial")
-TutorialAtSeconds = 0.0
+TabTutorialPath = NodePath("TabTutorial")
 
 [node name="Video" type="VideoStreamPlayer" parent="."]
 layout_mode = 1
@@ -29,5 +29,9 @@ mouse_filter = 2
 stream = ExtResource("2_video")
 expand = true
 
-[node name="VoiceTutorial" parent="." instance=ExtResource("3_tutorial")]
+[node name="ObjectiveHud" parent="." instance=ExtResource("4_hud")]
+
+[node name="TabTutorial" parent="." instance=ExtResource("3_tab")]
 visible = false
+NextScenePath = "res://Scenes/Cutscenes/Cutscene3.tscn"
+HudPath = NodePath("../ObjectiveHud")

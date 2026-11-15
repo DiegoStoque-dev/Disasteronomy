@@ -21,6 +21,12 @@ public partial class MainMenu : Control
 
     private const float FadeDuration = 0.25f;
 
+    /// <summary>
+    /// Load Game is temporarily disabled: the save system is not finished yet,
+    /// so the button is hidden and no handler is attached.
+    /// </summary>
+    private static readonly bool LoadGameEnabled = false;
+
     private Control? _menuContainer;
     private Control? _menuStart;
     private Control? _menuMultiplayer;
@@ -36,7 +42,7 @@ public partial class MainMenu : Control
         _menuStart = GetNodeOrNull<Control>(MenuStartPath);
         _menuMultiplayer = GetNodeOrNull<Control>(MenuMultiplayerPath);
 
-        if (_menuContainer == null || _menuStart == null || _menuMultiplayer == null)
+        if (_menuContainer == null || _menuStart == null)
         {
             GD.PrintErr("MainMenu: menu containers not found.");
             return;
@@ -46,7 +52,10 @@ public partial class MainMenu : Control
         _menuContainer.Visible = true;
         _menuContainer.Modulate = Colors.White;
         _menuStart.Visible = false;
-        _menuMultiplayer.Visible = false;
+
+        // The multiplayer box is gone: the button goes straight to the join screen.
+        if (_menuMultiplayer != null)
+            _menuMultiplayer.Visible = false;
 
         // Phase 1: settings overlay built in code, added on top of the menu.
         _settingsMenu = new SettingsMenu();
@@ -64,17 +73,27 @@ public partial class MainMenu : Control
 
         ConnectButtons(_menuStart, new (string, System.Action)[]
         {
-            ("BtnLoad", OnLoadPressed),
             ("BtnNewgame", OnNewGamePressed),
             ("BtnStartBack", OnBackPressed),
         });
 
-        ConnectButtons(_menuMultiplayer, new (string, System.Action)[]
+        // Load Game stays hidden until the save system is finished.
+        if (LoadGameEnabled)
+            ConnectButtons(_menuStart, new (string, System.Action)[] { ("BtnLoad", OnLoadPressed) });
+
+        TextureButton? loadButton = _menuStart.GetNodeOrNull<TextureButton>("BtnLoad");
+        if (loadButton != null)
+            loadButton.Visible = LoadGameEnabled;
+
+        if (_menuMultiplayer != null)
         {
-            ("BtnCreate", OnCreatePressed),
-            ("BtnJoin", OnJoinPressed),
-            ("BtnMultiplayerBack", OnBackPressed),
-        });
+            ConnectButtons(_menuMultiplayer, new (string, System.Action)[]
+            {
+                ("BtnCreate", OnCreatePressed),
+                ("BtnJoin", OnJoinPressed),
+                ("BtnMultiplayerBack", OnBackPressed),
+            });
+        }
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -162,7 +181,11 @@ public partial class MainMenu : Control
     // ------------------------------------------------------------------
     private void OnStartPressed() => SwitchBox(_menuContainer!, _menuStart!);
 
-    private void OnMultiplayerPressed() => SwitchBox(_menuContainer!, _menuMultiplayer!);
+    /// <summary>
+    /// The Multiplayer button goes straight to the join screen: there is no
+    /// intermediate box asking whether to create or join a room.
+    /// </summary>
+    private void OnMultiplayerPressed() => GoToScene(MultiplayerScenePath);
 
     private void OnOptionsPressed() => OpenSettings();
 

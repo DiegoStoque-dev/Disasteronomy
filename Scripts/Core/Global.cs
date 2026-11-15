@@ -244,6 +244,27 @@ public partial class Global : Node
         MusicVolume = Mathf.Clamp((float)cfg.GetValue("audio", "music_volume", 0.7f), 0f, 1f);
     }
 
+    // --- Objectives (the stage goal shown by the TAB overlay) ---
+
+    [Signal]
+    public delegate void ObjectiveChangedEventHandler();
+
+    /// <summary>Goal of the current stage. Shown by the objectives overlay (TAB).</summary>
+    public string CurrentObjective { get; private set; } = "";
+
+    /// <summary>Sets the stage goal and notifies every listening HUD.</summary>
+    public void SetObjective(string objective)
+    {
+        CurrentObjective = objective ?? "";
+        EmitSignal(SignalName.ObjectiveChanged);
+    }
+
+    /// <summary>Removes the current goal (between stages).</summary>
+    public void ClearObjective()
+    {
+        SetObjective("");
+    }
+
     // --- Input key remapping (from Sazsazan) ---
 
     /// <summary>
