@@ -13,6 +13,8 @@
 [ext_resource type="Texture2D" uid="uid://c73q8hxedn42j" path="res://Sprites/UI/MainMenu/botoes/load game.png" id="9_rrcx7"]
 [ext_resource type="Texture2D" uid="uid://djchtnmjq65tp" path="res://Sprites/UI/MainMenu/botoes/join.png" id="12_fh7cp"]
 [ext_resource type="Script" uid="uid://bxnifvm0uvbt0" path="res://Scripts/UI/MainMenu.cs" id="13_fh7cp"]
+[ext_resource type="Script" path="res://Scripts/UI/SpaceshipMotion.cs" id="14_ship"]
+[ext_resource type="Script" path="res://Scripts/Effects/Starfield.cs" id="15_starfield"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ydj5n"]
 atlas = ExtResource("1_loo7a")
@@ -631,6 +633,20 @@ MenuContainerPath = NodePath("MenuContainer")
 MenuStartPath = NodePath("MenuStart")
 MenuMultiplayerPath = NodePath("MenuMultiplayer")
 
+[node name="StarfieldLayer" type="CanvasLayer" parent="."]
+layer = -100
+
+[node name="Starfield" type="Control" parent="StarfieldLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("15_starfield")
+Scroll = true
+ScrollSpeed = 14.0
+
 [node name="background" type="TextureRect" parent="." unique_id=1180550868]
 layout_mode = 0
 offset_left = 14.999999
@@ -638,13 +654,6 @@ offset_top = 6.9999995
 offset_right = 11694.999
 offset_bottom = 6636.9995
 scale = Vector2(0.1, 0.1)
-
-[node name="Stars" type="AnimatedSprite2D" parent="background" unique_id=1033761907]
-position = Vector2(5609.9995, 3169.9993)
-scale = Vector2(29.999996, 29.999996)
-sprite_frames = SubResource("SpriteFrames_w4mfu")
-animation = &"Stars"
-autoplay = "Stars"
 
 [node name="Titel" type="TextureRect" parent="background" unique_id=1359901522]
 layout_mode = 0
@@ -662,6 +671,7 @@ sprite_frames = SubResource("SpriteFrames_ty0te")
 animation = &"Spaceship"
 autoplay = "Spaceship"
 frame_progress = 0.23412949
+script = ExtResource("14_ship")
 
 [node name="MenuContainer" type="VBoxContainer" parent="." unique_id=840968932]
 layout_mode = 1
