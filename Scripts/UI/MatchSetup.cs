@@ -13,7 +13,7 @@ public partial class MatchSetup : Control
 {
     private const string HandlerPath = "/root/HighLevelNetworkHandler";
     private const string MainMenuScenePath = "res://Scenes/MainMenu.tscn";
-    private const string CutsceneScenePath = "res://Scenes/Cutscenes/Cutscene2.tscn";
+    private const string MissionScenePath = "res://Scenes/Phase1/Phase1.tscn";
     private const string SpaceshipSheetPath = "res://Sprites/UI/MainMenu/main menu/spaceship sheet.png";
 
     private const int ShipFrameWidth = 384;
@@ -22,6 +22,8 @@ public partial class MatchSetup : Control
     private const float ShipScale = 3f;
     private const float ShipHoldTime = 0.55f;
     private const float FlybyDuration = 1.35f;
+    /// <summary>Duration of the reversed departure (ship flying back into place).</summary>
+    private const float ReturnDuration = 0.9f;
     private const float ShipStartX = 787f;
     private const float ShipStartY = 399f;
     private const float ShipEndX = -760f;
@@ -50,6 +52,7 @@ public partial class MatchSetup : Control
     private bool _panelShown;
     private bool _matchStarted;
     private bool _leaving;
+    private Tween? _shipTween;
 
     public override void _Ready()
     {
@@ -141,13 +144,13 @@ public partial class MatchSetup : Control
         _ship.Scale = new Vector2(ShipScale, ShipScale);
         _ship.Rotation = 0f;
 
-        Tween tween = CreateTween();
-        tween.TweenInterval(ShipHoldTime);
-        tween.TweenCallback(Callable.From(_ship.StartDeparture));
-        tween.TweenProperty(_ship, "BasePosition", new Vector2(ShipEndX, ShipEndY), FlybyDuration)
+        _shipTween = CreateTween();
+        _shipTween.TweenInterval(ShipHoldTime);
+        _shipTween.TweenCallback(Callable.From(_ship.StartDeparture));
+        _shipTween.TweenProperty(_ship, "BasePosition", new Vector2(ShipEndX, ShipEndY), FlybyDuration)
              .SetTrans(Tween.TransitionType.Quad)
              .SetEase(Tween.EaseType.In); // accelerating, not constant speed
-        tween.Finished += RevealPanel;
+        _shipTween.Finished += RevealPanel;
     }
 
     private void RevealPanel()
@@ -620,10 +623,11 @@ public partial class MatchSetup : Control
 
         _matchStarted = true;
 
+        // The host started the mission: everyone moves to Phase 1 together.
         if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeScene(CutsceneScenePath);
+            SceneTransitions.Instance.ChangeScene(MissionScenePath);
         else
-            GetTree().ChangeSceneToFile(CutsceneScenePath);
+            GetTree().ChangeSceneToFile(MissionScenePath);
     }
 
     private void OnBackPressed()
@@ -633,12 +637,62 @@ public partial class MatchSetup : Control
             return;
 
         _leaving = true;
+
+        // Reverse the departure: the ship flies back to its menu resting place
+        // and only then the scene changes.
+        if (_panelShown && _ship != null)
+            PlayDepartureBack(LeaveToMainMenu);
+        else
+            LeaveToMainMenu();
+    }
+
+    private void LeaveToMainMenu()
+    {
         _handler?.Call("stop_multiplayer");
 
         if (SceneTransitions.Instance != null)
             SceneTransitions.Instance.ChangeScene(MainMenuScenePath);
         else
             GetTree().ChangeSceneToFile(MainMenuScenePath);
+    }
+
+    /// <summary>Reversed departure: the ship decelerates back into its resting spot.</summary>
+    private void PlayDepartureBack(System.Action onFinished)
+    {
+        if (_ship == null)
+        {
+            onFinished();
+            return;
+        }
+
+        if (_shipTween != null && _shipTween.IsValid())
+            _shipTween.Kill();
+
+        // Hide the panel and the preview while the ship comes back.
+        if (_panel != null)
+            _panel.Visible = false;
+        if (_preview != null)
+            _preview.Visible = false;
+        if (_previewName != null)
+            _previewName.Visible = false;
+
+        _ship.Visible = true;
+        _ship.SpriteFrames ??= SpriteSheetUtil.BuildFrames(
+            SpaceshipSheetPath, ShipFrameWidth, ShipFrameHeight, ShipFps, "fly");
+
+        if (_ship.SpriteFrames != null)
+        {
+            _ship.Animation = "fly";
+            _ship.Play();
+        }
+
+        _ship.BasePosition = new Vector2(ShipEndX, ShipEndY);
+
+        _shipTween = CreateTween();
+        _shipTween.TweenProperty(_ship, "BasePosition", new Vector2(ShipStartX, ShipStartY), ReturnDuration)
+             .SetTrans(Tween.TransitionType.Quad)
+             .SetEase(Tween.EaseType.Out); // decelerating into place
+        _shipTween.Finished += onFinished;
     }
 
     private void OnServerDisconnected()
