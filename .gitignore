@@ -1,3 +1,4 @@
+
 # Godot 4+ specific ignores
 /.godot/
 /.import/
@@ -28,6 +29,8 @@
 Thumbs.db
 
 # Logs and temporary files
+# Ignore old backup folder
+old/
 *.log
 *.tmp
 *.temp

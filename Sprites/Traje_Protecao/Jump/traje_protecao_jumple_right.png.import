@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://rsm36ng2bnhb"
-path="res://.godot/imported/cinsa.png-5cc10dde886c0080d9f7af2606097266.ctex"
+uid="uid://dum1qy6f7p118"
+path="res://.godot/imported/traje_protecao_jumple_right.png-52c4cea2acb61f7a4b509c114390c02d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/UI/MainMenu/cinsa.png"
-dest_files=["res://.godot/imported/cinsa.png-5cc10dde886c0080d9f7af2606097266.ctex"]
+source_file="res://Sprites/Traje_Protecao/Jump/traje_protecao_jumple_right.png"
+dest_files=["res://.godot/imported/traje_protecao_jumple_right.png-52c4cea2acb61f7a4b509c114390c02d.ctex"]
 
 [params]
 
