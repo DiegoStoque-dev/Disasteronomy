@@ -50,4 +50,5 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="." unique_id=2019169952]
+public_visibility = false
 replication_config = SubResource("SceneReplicationConfig_lobby_player")

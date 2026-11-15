@@ -619,6 +619,9 @@ func setup_participants(value: Array) -> void:
 func get_participants() -> Array:
 	return participants.duplicate()
 
+func get_player_ids() -> Array:
+	return _player_nicknames.keys()
+
 func add_participant(peer_id: int) -> void:
 	if not participants.has(peer_id):
 		participants.append(peer_id)
