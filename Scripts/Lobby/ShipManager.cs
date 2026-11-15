@@ -37,7 +37,8 @@ public partial class ShipManager : Node2D
     /// <summary>Player scene spawned inside the lobby.</summary>
     [Export] public string PlayerScenePath = "res://Scenes/Player.tscn";
 
-    private const float FadeDuration = 1.2f;
+    private const float FadeDuration = 1.5f;      // slow fade-to-black leaving the ship (Level 1 fades in by itself).
+    private const float FadeHold = 0.3f;          // brief hold at black before loading Level 1.
     private const float MinSpawnSeparation = 44f;
 
     private StaticBody2D? world;      // map root: polygons + the two Area2D zones
@@ -459,7 +460,15 @@ public partial class ShipManager : Node2D
         terminalBusy = false;
         hud?.ShowCountdown(false);
         hud?.ShowInteractPrompt(false);
-        hud?.FadeToBlack(FadeDuration, FadeToPhaseTransition);
+        // Slow fade out (1.5s) then a short hold at black; Level 1 (Phase1.tscn) fades back in on its own.
+        hud?.FadeToBlack(FadeDuration, () => RunSceneChangeAfterHold());
+    }
+
+    private async void RunSceneChangeAfterHold()
+    {
+        await ToSignal(GetTree().CreateTimer(FadeHold), SceneTreeTimer.SignalName.Timeout);
+        if (IsInstanceValid(this))
+            FadeToPhaseTransition();
     }
 
     private void FadeToPhaseTransition()
