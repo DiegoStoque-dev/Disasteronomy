@@ -27,7 +27,8 @@ public partial class ObjectiveHud : CanvasLayer
         BuildUi();
 
         Global? global = GetNodeOrNull<Global>("/root/Global");
-        global?.Connect("objective_changed", Callable.From(Refresh));
+        if (global != null)
+            global.ObjectiveChanged += Refresh;
 
         _active = false;
         ApplyVisibility(false);
