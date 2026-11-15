@@ -21,6 +21,7 @@ public partial class MissionSummary : CanvasLayer
     private Control? _root;
     private Label? _titleLabel;
     private Label? _gradeLabel;
+    private Label? _gradeDescLabel;
     private VBoxContainer? _statsBox;
     private Button? _continueButton;
 
@@ -46,6 +47,9 @@ public partial class MissionSummary : CanvasLayer
             _gradeLabel.Text = $"RANK {result.Grade}";
             _gradeLabel.AddThemeColorOverride("font_color", GradeColor(result.Grade));
         }
+
+        if (_gradeDescLabel != null)
+            _gradeDescLabel.Text = GradeDescription(result.Grade);
 
         if (_statsBox != null)
         {
@@ -125,6 +129,11 @@ public partial class MissionSummary : CanvasLayer
         _gradeLabel.AddThemeFontSizeOverride("font_size", 84);
         box.AddChild(_gradeLabel);
 
+        _gradeDescLabel = new Label { Text = "", HorizontalAlignment = HorizontalAlignment.Center };
+        _gradeDescLabel.AddThemeFontSizeOverride("font_size", 22);
+        _gradeDescLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
+        box.AddChild(_gradeDescLabel);
+
         _statsBox = new VBoxContainer();
         _statsBox.AddThemeConstantOverride("separation", 8);
         box.AddChild(_statsBox);
@@ -142,5 +151,16 @@ public partial class MissionSummary : CanvasLayer
         'C' => new Color(0.9f, 0.9f, 0.4f),
         'D' => new Color(1f, 0.6f, 0.3f),
         _   => new Color(1f, 0.35f, 0.35f),
+    };
+
+    /// <summary>A short, readable explanation of what each rank means.</summary>
+    private static string GradeDescription(char grade) => grade switch
+    {
+        'S' => "Flawless performance - clean, fast EVA",
+        'A' => "Excellent - fast and safe",
+        'B' => "Solid - minor stress, good pace",
+        'C' => "Acceptable - the mission got done",
+        'D' => "Rough - too many scares on the line",
+        _   => "Critical - the tether nearly killed the EVA",
     };
 }

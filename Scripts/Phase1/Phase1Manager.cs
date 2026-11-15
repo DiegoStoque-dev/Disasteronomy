@@ -74,20 +74,25 @@ public partial class Phase1Manager : Node2D
 			localPlayer.GlobalPosition = AirlockPosition + new Vector2(80f, 0f);
 
 		// Multiplayer: hide the editor-instanced placeholder suit (it is not a real peer -
-		// the MultiplayerSpawner creates the actual players). Otherwise a frozen duplicate
-		// astronaut floats at the world origin.
+		// the MultiplayerSpawner creates the actual players), and disable its camera so the
+		// host never ends up following / controlling an invisible ghost at the origin.
 		if (Multiplayer.HasMultiplayerPeer())
 		{
 			foreach (Node child in GetChildren())
+			{
 				if (child is EvaPlayer p && !int.TryParse(p.Name, out _))
+				{
 					p.Visible = false;
+					if (p.playerCamera != null)
+						p.playerCamera.Enabled = false;
+				}
+			}
 		}
 
-		// Host safety: the MultiplayerSpawner auto-spawns nodes when a peer connects, but the
-		// server itself may never get one. Guarantee the SERVER has a controllable player so the
-		// phase can actually be completed in multiplayer. Clients wait for the spawner replication.
-		if (Multiplayer.HasMultiplayerPeer() && Multiplayer.IsServer() && FindLocalPlayer() == null)
-			SpawnSoloPlayer();
+		// Host safety: the MultiplayerSpawner creates the server's own suit (peer 1) when
+		// the multiplayer session starts, but it needs a frame or two. Give it a moment,
+		// then guarantee the SERVER has a controllable player so the phase can finish in MP.
+		TryEnsureHostPlayer();
 
 		UpdateObjective();
 		PauseMenu.Attach(this, Phase1Controls);
@@ -150,7 +155,9 @@ public partial class Phase1Manager : Node2D
 		{
 			foreach (Node node in GetTree().GetNodesInGroup("network_players"))
 			{
-				if (node is EvaPlayer p && p.IsMultiplayerAuthority())
+				// The editor-instanced placeholder (name "EvaPlayer") is hidden and must never
+				// be treated as a real player: only spawner-created suits (peer-id names) count.
+				if (node is EvaPlayer p && int.TryParse(p.Name, out _) && p.IsMultiplayerAuthority())
 				{
 					localPlayer = p;
 					return p;
@@ -184,10 +191,30 @@ public partial class Phase1Manager : Node2D
 		spawner.Spawned += OnPlayerSpawned;
 	}
 
+	/// <summary>
+	/// Waits a moment for the MultiplayerSpawner to create the server's own suit (peer 1).
+	/// If it never appears, spawns a server-controlled player manually. Runs only on the
+	/// server and never duplicates an existing real player (FindLocalPlayer only accepts
+	/// peer-id-named suits, so the hidden editor placeholder can never block this).
+	/// </summary>
+	private async void TryEnsureHostPlayer()
+	{
+		await ToSignal(GetTree().CreateTimer(0.5f), SceneTreeTimer.SignalName.Timeout);
+		if (!IsInstanceValid(this) || !Multiplayer.HasMultiplayerPeer() || !Multiplayer.IsServer()) return;
+		if (FindLocalPlayer() == null)
+			SpawnSoloPlayer();
+	}
+
 	/// <summary>Places multiplayer-spawned players near the airlock, spread by peer id so they
 	/// never spawn stacked on top of each other (each gets its own clear slot).</summary>
 	private void OnPlayerSpawned(Node node)
 	{
+		// Clients receive their own suit via spawner replication AFTER this scene's _Ready,
+		// so re-resolve the local player the moment any suit pops in (leftover null -> HUD
+		// would be stuck at "waiting for player..." and objectives would never update).
+		if (Multiplayer.HasMultiplayerPeer())
+			FindLocalPlayer();
+
 		if (node is EvaPlayer p && Multiplayer.HasMultiplayerPeer())
 		{
 			int peerId = 1;
