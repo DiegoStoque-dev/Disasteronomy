@@ -42,3 +42,7 @@ position = Vector2(3.5, 0)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D/Terminal" unique_id=7419665]
 position = Vector2(332.0625, 124.5)
 shape = SubResource("RectangleShape2D_w4mfu")
+
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1585614127]
+_spawnable_scenes = PackedStringArray("uid://1shx8uqhmok5")
+spawn_path = NodePath("..")
