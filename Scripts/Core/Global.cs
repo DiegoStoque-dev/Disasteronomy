@@ -22,6 +22,9 @@ public partial class Global : Node
     public bool IsFullscreen { get; private set; } = false;
     public Vector2I WindowResolution { get; private set; } = new Vector2I(1152, 648);
 
+    /// <summary>Menu music volume, 0..1.</summary>
+    public float MusicVolume { get; private set; } = 0.7f;
+
     // Remappable actions (matching Input Map)
     public static readonly string[] RemappableActions =
     {
@@ -34,6 +37,7 @@ public partial class Global : Node
     {
         Instance = this;
         LoadVideoSettings();
+        LoadAudioSettings();
         LoadKeyBindings();
     }
 
@@ -154,14 +158,14 @@ public partial class Global : Node
         {
             ApplyResolution();
         }
-        SaveVideoSettings();
+        SaveSettings();
     }
 
     /// <summary>Set window resolution. In fullscreen, only store for later.</summary>
     public void SetResolution(Vector2I resolution)
     {
         WindowResolution = resolution;
-        SaveVideoSettings();
+        SaveSettings();
         if (!IsFullscreen)
         {
             ApplyResolution();
@@ -196,7 +200,7 @@ public partial class Global : Node
         }
 
         // With a small delay, to ensure main window exists
-        CallDeferred(nameof(ApplyVideoOnBoot));
+        Callable.From(ApplyVideoOnBoot).CallDeferred();
     }
 
     private void ApplyVideoOnBoot()
@@ -211,13 +215,33 @@ public partial class Global : Node
         }
     }
 
-    private void SaveVideoSettings()
+    private void SaveSettings()
     {
         ConfigFile cfg = new ConfigFile();
         cfg.Load(SettingsPath); // fail silently if not exists yet
         cfg.SetValue("video", "fullscreen", IsFullscreen);
         cfg.SetValue("video", "resolution", $"{WindowResolution.X}x{WindowResolution.Y}");
+        cfg.SetValue("audio", "music_volume", MusicVolume);
         cfg.Save(SettingsPath);
+    }
+
+    // --- Audio ---
+
+    /// <summary>Sets the menu music volume (0..1), saves it and applies it right away.</summary>
+    public void SetMusicVolume(float volume)
+    {
+        MusicVolume = Mathf.Clamp(volume, 0f, 1f);
+        SaveSettings();
+        MusicManager.Instance?.ApplyVolume();
+    }
+
+    /// <summary>Reads the saved music volume from settings.cfg.</summary>
+    private void LoadAudioSettings()
+    {
+        ConfigFile cfg = new ConfigFile();
+        if (cfg.Load(SettingsPath) != Error.Ok) { return; }
+
+        MusicVolume = Mathf.Clamp((float)cfg.GetValue("audio", "music_volume", 0.7f), 0f, 1f);
     }
 
     // --- Input key remapping (from Sazsazan) ---

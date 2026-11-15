@@ -6,6 +6,10 @@ signal room_created(room_code: String)
 signal room_found(room_code: String, host_ip: String)
 signal room_search_completed(room_count: int)
 signal player_nickname_changed(peer_id: int, nickname: String)
+signal player_character_changed(peer_id: int, character_index: int)
+signal player_ready_changed(peer_id: int, ready: bool)
+signal player_kicked(peer_id: int)
+signal match_started
 
 const PORT: int = 7777
 const DISCOVERY_PORT: int = 7778
@@ -22,6 +26,8 @@ var _discovery_peer: PacketPeerUDP
 var _room_code: String = ""
 var local_nickname: String = "Jogador"
 var _player_nicknames: Dictionary = {}
+var _player_characters: Dictionary = {}
+var _player_ready: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -81,7 +87,10 @@ func start_server(room_code: String = "") -> void:
 	peer = new_peer
 	multiplayer.multiplayer_peer = peer
 	_player_nicknames.clear()
+	_player_characters.clear()
+	_player_ready.clear()
 	_sync_player_nickname.rpc(multiplayer.get_unique_id(), local_nickname)
+	_auto_assign_character(multiplayer.get_unique_id())
 	server_started.emit()
 	room_created.emit(_room_code)
 
@@ -96,6 +105,23 @@ func _on_peer_connected(peer_id: int) -> void:
 			_player_nicknames[existing_peer_id]
 		)
 
+	# Send the already claimed characters and ready states to the newcomer.
+	for existing_peer_id in _player_characters:
+		_sync_player_character.rpc_id(
+			peer_id,
+			existing_peer_id,
+			int(_player_characters[existing_peer_id])
+		)
+	for existing_peer_id in _player_ready:
+		_sync_player_ready.rpc_id(
+			peer_id,
+			existing_peer_id,
+			bool(_player_ready[existing_peer_id])
+		)
+
+	# Give the newcomer a free character slot right away.
+	_auto_assign_character(peer_id)
+
 	_broadcast_peer_activity.rpc(peer_id, true)
 
 func _on_peer_disconnected(peer_id: int) -> void:
@@ -103,6 +129,8 @@ func _on_peer_disconnected(peer_id: int) -> void:
 		return
 
 	_sync_player_nickname.rpc(peer_id, "")
+	_sync_player_character.rpc(peer_id, -1)
+	_player_ready.erase(peer_id)
 	_broadcast_peer_activity.rpc(peer_id, false)
 
 func _on_connected_to_server() -> void:
@@ -295,4 +323,153 @@ func stop_multiplayer() -> void:
 	multiplayer.multiplayer_peer = null
 	_room_code = ""
 	_player_nicknames.clear()
+	_player_characters.clear()
+	_player_ready.clear()
+
+# ---------------------------------------------------------------------------
+# Match setup (characters, ready state, kick, start) - used by the lobby screen.
+# ---------------------------------------------------------------------------
+
+const CHARACTER_COUNT: int = 4
+
+func get_room_code() -> String:
+	return _room_code
+
+func get_player_ids() -> Array:
+	# _player_nicknames is kept in sync on every peer, so it lists the whole room.
+	return _player_nicknames.keys()
+
+func get_player_character(peer_id: int) -> int:
+	return int(_player_characters.get(peer_id, -1))
+
+func get_player_ready(peer_id: int) -> bool:
+	return bool(_player_ready.get(peer_id, false))
+
+func set_local_character(character_index: int) -> void:
+	if peer == null:
+		_player_characters[1] = character_index
+		player_character_changed.emit(1, character_index)
+		return
+
+	if multiplayer.is_server():
+		_assign_character(multiplayer.get_unique_id(), character_index)
+	else:
+		_submit_character.rpc_id(1, character_index)
+
+func _assign_character(peer_id: int, character_index: int) -> void:
+	if not multiplayer.is_server():
+		return
+	if character_index < 0 or character_index >= CHARACTER_COUNT:
+		return
+
+	# Free the chosen character from whoever had it before.
+	for other_id in _player_characters.keys():
+		if int(_player_characters[other_id]) == character_index and int(other_id) != peer_id:
+			_player_characters.erase(other_id)
+			_sync_player_character.rpc(int(other_id), -1)
+
+	_player_characters[peer_id] = character_index
+	_sync_player_character.rpc(peer_id, character_index)
+
+func _auto_assign_character(peer_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	if _player_characters.has(peer_id):
+		return
+
+	var used: Array = _player_characters.values()
+	for index in CHARACTER_COUNT:
+		if not used.has(index):
+			_assign_character(peer_id, index)
+			return
+	_assign_character(peer_id, 0)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _submit_character(character_index: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_assign_character(multiplayer.get_remote_sender_id(), character_index)
+
+@rpc("authority", "call_local", "reliable")
+func _sync_player_character(peer_id: int, character_index: int) -> void:
+	if character_index < 0:
+		_player_characters.erase(peer_id)
+	else:
+		_player_characters[peer_id] = character_index
+	player_character_changed.emit(peer_id, character_index)
+
+func set_local_ready(value: bool) -> void:
+	if peer == null:
+		_player_ready[1] = value
+		player_ready_changed.emit(1, value)
+		return
+
+	if multiplayer.is_server():
+		_set_ready_for(multiplayer.get_unique_id(), value)
+	else:
+		_submit_ready.rpc_id(1, value)
+
+func _set_ready_for(peer_id: int, value: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	_player_ready[peer_id] = value
+	_sync_player_ready.rpc(peer_id, value)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _submit_ready(value: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	_set_ready_for(multiplayer.get_remote_sender_id(), value)
+
+@rpc("authority", "call_local", "reliable")
+func _sync_player_ready(peer_id: int, value: bool) -> void:
+	_player_ready[peer_id] = value
+	player_ready_changed.emit(peer_id, value)
+
+func set_peer_nickname(peer_id: int, nickname: String) -> void:
+	# The host may rename anyone; everyone may rename themselves.
+	if peer == null or multiplayer.is_server():
+		var clean_nickname := _sanitize_nickname(nickname)
+		if not clean_nickname.is_empty():
+			_sync_player_nickname.rpc(peer_id, clean_nickname)
+		return
+	_submit_peer_nickname.rpc_id(1, peer_id, nickname)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _submit_peer_nickname(peer_id: int, nickname: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var clean_nickname := _sanitize_nickname(nickname)
+	if clean_nickname.is_empty():
+		return
+	_sync_player_nickname.rpc(peer_id, clean_nickname)
+
+func kick_player(peer_id: int) -> void:
+	# Only the host removes players, and never itself.
+	if peer == null or not multiplayer.is_server():
+		return
+	if peer_id == multiplayer.get_unique_id():
+		return
+	_notify_kicked.rpc(peer_id)
+	peer.disconnect_peer(peer_id)
+
+@rpc("authority", "call_local", "reliable")
+func _notify_kicked(peer_id: int) -> void:
+	player_kicked.emit(peer_id)
+
+func is_host() -> bool:
+	return peer == null or multiplayer.is_server()
+
+func start_match() -> void:
+	if peer == null:
+		# Solo: nothing to synchronize, just start.
+		match_started.emit()
+		return
+	if not multiplayer.is_server():
+		return
+	_start_match.rpc()
+
+@rpc("authority", "call_local", "reliable")
+func _start_match() -> void:
+	match_started.emit()
 

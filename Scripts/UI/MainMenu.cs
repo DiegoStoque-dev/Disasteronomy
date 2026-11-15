@@ -12,6 +12,8 @@ public partial class MainMenu : Control
     [Export] public string GameScenePath = "res://Scenes/Player.tscn";
     [Export] public string CreditsScenePath = "res://Scenes/CreditsMenu.tscn";
     [Export] public string MultiplayerScenePath = "res://Scenes/multiplayer.tscn";
+    /// <summary>Match setup / lobby used by Start -> New Game (solo or host).</summary>
+    [Export] public string MatchSetupScenePath = "res://Scenes/MatchSetup.tscn";
 
     [Export] public NodePath MenuContainerPath = "MenuContainer";
     [Export] public NodePath MenuStartPath = "MenuStart";
@@ -212,7 +214,32 @@ public partial class MainMenu : Control
 
     private void OnLoadPressed() => StartGame(newRun: false);
 
-    private void OnNewGamePressed() => StartGame(newRun: true);
+    /// <summary>
+    /// New Game always opens a fresh match setup screen, which also creates the
+    /// room (so the code can be shared) and works with a single player.
+    /// </summary>
+    private void OnNewGamePressed()
+    {
+        Global? global = GetNodeOrNull<Global>("/root/Global");
+        if (global != null)
+        {
+            global.NewRunRequested = true;
+            global.Save(Vector2.Zero);
+        }
+
+        // Drop any previous session before hosting a new room.
+        GetNodeOrNull("/root/HighLevelNetworkHandler")?.Call("stop_multiplayer");
+
+        GoToScene(MatchSetupScenePath);
+    }
+
+    private void GoToScene(string scenePath)
+    {
+        if (SceneTransitions.Instance != null)
+            SceneTransitions.Instance.ChangeScene(scenePath);
+        else
+            GetTree().ChangeSceneToFile(scenePath);
+    }
 
     private void OnCreatePressed() => GoToMultiplayer();
 

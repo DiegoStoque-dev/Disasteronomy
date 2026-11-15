@@ -1,0 +1,149 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/MatchSetup.cs" id="1_setup"]
+[ext_resource type="Script" path="res://Scripts/Effects/Starfield.cs" id="2_starfield"]
+[ext_resource type="Texture2D" path="res://Sprites/UI/MainMenu/disasteronomy att.png" id="3_titel"]
+
+[node name="MatchSetup" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_setup")
+
+[node name="StarfieldLayer" type="CanvasLayer" parent="."]
+layer = -100
+
+[node name="Starfield" type="Control" parent="StarfieldLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_starfield")
+Scroll = true
+ScrollSpeed = 10.0
+
+[node name="Titel" type="TextureRect" parent="."]
+offset_left = 30.0
+offset_top = 25.0
+offset_right = 699.0
+offset_bottom = 205.0
+mouse_filter = 2
+texture = ExtResource("3_titel")
+expand_mode = 1
+
+[node name="Spaceship" type="AnimatedSprite2D" parent="."]
+position = Vector2(787, 399)
+scale = Vector2(3, 3)
+offset = Vector2(-80, -24)
+
+[node name="PanelHolder" type="Control" parent="."]
+offset_left = 50.0
+offset_top = 198.0
+offset_right = 660.0
+offset_bottom = 645.0
+
+[node name="Panel" type="PanelContainer" parent="PanelHolder"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="PanelHolder/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="PanelHolder/Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.62, 0.98, 1)
+theme_override_font_sizes/font_size = 28
+text = "PARTIDA"
+horizontal_alignment = 1
+
+[node name="CodeLabel" type="Label" parent="PanelHolder/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Código da sala: ------"
+horizontal_alignment = 1
+
+[node name="PlayersTitle" type="Label" parent="PanelHolder/Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.66, 0.8, 1)
+theme_override_font_sizes/font_size = 18
+text = "JOGADORES"
+
+[node name="Header" type="HBoxContainer" parent="PanelHolder/Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ColHero" type="Label" parent="PanelHolder/Panel/VBox/Header"]
+custom_minimum_size = Vector2(138, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.56, 0.72, 1)
+theme_override_font_sizes/font_size = 16
+text = "HERÓI"
+
+[node name="ColNick" type="Label" parent="PanelHolder/Panel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.62, 0.56, 0.72, 1)
+theme_override_font_sizes/font_size = 16
+text = "APELIDO"
+
+[node name="ColReady" type="Label" parent="PanelHolder/Panel/VBox/Header"]
+custom_minimum_size = Vector2(62, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.56, 0.72, 1)
+theme_override_font_sizes/font_size = 16
+text = "PRONTO"
+horizontal_alignment = 1
+
+[node name="ColRemove" type="Label" parent="PanelHolder/Panel/VBox/Header"]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+
+[node name="PlayerScroll" type="ScrollContainer" parent="PanelHolder/Panel/VBox"]
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+
+[node name="PlayerList" type="VBoxContainer" parent="PanelHolder/Panel/VBox/PlayerScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="StatusLabel" type="Label" parent="PanelHolder/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Aguardando jogadores..."
+autowrap_mode = 2
+
+[node name="StartButton" type="Button" parent="PanelHolder/Panel/VBox"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "INICIAR PARTIDA"
+
+[node name="BackButton" type="Button" parent="PanelHolder/Panel/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "VOLTAR"
+
+[node name="PreviewName" type="Label" parent="."]
+offset_left = 735.0
+offset_top = 292.0
+offset_right = 1075.0
+offset_bottom = 336.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 30
+text = "ANA"
+horizontal_alignment = 1
+
+[node name="CharacterPreview" type="AnimatedSprite2D" parent="."]
+position = Vector2(905, 470)
+scale = Vector2(8, 8)

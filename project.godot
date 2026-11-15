@@ -28,6 +28,7 @@ driver/enable_input=true
 HighLevelNetworkHandler="*res://Scripts/high_level_network_handler.gd"
 SceneTransitions="*res://Scripts/Core/SceneTransitions.cs"
 Global="*res://Scripts/Core/Global.cs"
+Music="*res://Scripts/Core/MusicManager.cs"
 
 [display]
 
@@ -37,6 +38,10 @@ window/stretch/shrink=1
 [dotnet]
 
 project/assembly_name="disasteronomy"
+
+[gui]
+
+theme/custom="res://Themes/DisasteronomyTheme.tres"
 
 [input]
 

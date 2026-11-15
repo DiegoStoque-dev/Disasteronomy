@@ -14,6 +14,9 @@ public partial class IntroCutscene : Control
     /// <summary>When true, any key / mouse click skips the intro.</summary>
     [Export] public bool AllowSkip = true;
 
+    /// <summary>When true, changing to NextScenePath happens as soon as the video ends.</summary>
+    [Export] public bool AutoAdvance = true;
+
     private VideoStreamPlayer? _video;
     private bool _finished;
 
@@ -27,8 +30,20 @@ public partial class IntroCutscene : Control
             return;
         }
 
-        _video.Finished += GoToNextScene;
+        _video.Finished += OnVideoFinished;
         _video.Play();
+    }
+
+    private void OnVideoFinished()
+    {
+        if (!AutoAdvance)
+        {
+            // Used by story cutscenes: the flow continues elsewhere.
+            GD.Print("IntroCutscene: video finished (auto advance disabled).");
+            return;
+        }
+
+        GoToNextScene();
     }
 
     public override void _UnhandledInput(InputEvent @event)

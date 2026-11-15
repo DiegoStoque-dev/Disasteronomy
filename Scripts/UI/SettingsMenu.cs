@@ -99,19 +99,7 @@ public partial class SettingsMenu : CanvasLayer
         _root.AddChild(center);
 
         PanelContainer panel = new();
-        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color(0.08f, 0.08f, 0.12f, 0.96f),
-            CornerRadiusTopLeft = 12,
-            CornerRadiusTopRight = 12,
-            CornerRadiusBottomLeft = 12,
-            CornerRadiusBottomRight = 12,
-            ContentMarginLeft = 24,
-            ContentMarginRight = 24,
-            ContentMarginTop = 20,
-            ContentMarginBottom = 20,
-        });
-        panel.CustomMinimumSize = new Vector2(460, 0);
+        panel.CustomMinimumSize = new Vector2(500, 0);
         center.AddChild(panel);
 
         VBoxContainer vbox = new();
@@ -123,6 +111,8 @@ public partial class SettingsMenu : CanvasLayer
         BuildInputRows(vbox);
         vbox.AddChild(MakeTitle("VÍDEO", 18));
         BuildVideoRows(vbox);
+        vbox.AddChild(MakeTitle("ÁUDIO", 18));
+        BuildAudioRows(vbox);
 
         Label help = new()
         {
@@ -178,6 +168,38 @@ public partial class SettingsMenu : CanvasLayer
             _actionButtons[action] = button;
             vbox.AddChild(row);
         }
+    }
+
+    /// <summary>Music volume slider (0-100%), applied instantly and saved.</summary>
+    private void BuildAudioRows(VBoxContainer vbox)
+    {
+        Global? global = GetNodeOrNull<Global>("/root/Global");
+
+        HBoxContainer row = new();
+        row.AddThemeConstantOverride("separation", 10);
+
+        Label label = new()
+        {
+            Text = "Volume da música",
+            CustomMinimumSize = new Vector2(200, 0),
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        row.AddChild(label);
+
+        HSlider slider = new()
+        {
+            MinValue = 0,
+            MaxValue = 100,
+            Step = 1,
+            Value = (global?.MusicVolume ?? 0.7f) * 100f,
+            CustomMinimumSize = new Vector2(160, 26),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+        };
+        slider.ValueChanged += value => global?.SetMusicVolume((float)value / 100f);
+        row.AddChild(slider);
+
+        vbox.AddChild(row);
     }
 
     private void BuildVideoRows(VBoxContainer vbox)
