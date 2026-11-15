@@ -48,7 +48,6 @@ public partial class ShipManager : Node2D
     private Rect2 spawnBounds;
 
     private Node2D? playersRoot;
-    private MultiplayerSpawner? spawner;
     private ShipHud? hud;
     private Player? localPlayer;
 
@@ -226,20 +225,15 @@ public partial class ShipManager : Node2D
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// MultiplayerSpawner following the Phase1 pattern: spawn path "Players",
-    /// Player.tscn registered as spawnable. The host adds a node per peer under
-    /// the path and the spawner replicates it to every client.
+    /// Players are created with a deterministic RPC broadcast from the host (see
+    /// SpawnPlayerForPeer / RpcSpawnPlayer) instead of a MultiplayerSpawner, so
+    /// every peer reliably builds the same players in its own tree — a client
+    /// never ends up without its own character (and camera) or without remote ones.
     /// </summary>
     private void ConfigureSpawner()
     {
         playersRoot = new Node2D { Name = "Players", ZIndex = 1 };
         AddChild(playersRoot);
-
-        spawner = new MultiplayerSpawner { Name = "MultiplayerSpawner" };
-        AddChild(spawner);
-        spawner.SpawnPath = new NodePath("Players");
-        spawner.AddSpawnableScene(PlayerScenePath);
-        spawner.Spawned += OnPlayerSpawned;
     }
 
     private void SetupHud()
@@ -272,24 +266,44 @@ public partial class ShipManager : Node2D
     {
         takenSpawnPositions.Clear();
 
-        if (Multiplayer.HasMultiplayerPeer())
-        {
-            if (IsHost)
-            {
-                SpawnPlayerForPeer(LocalPeerId);
-                foreach (int peerId in Multiplayer.GetPeers())
-                    if (peerId != Multiplayer.GetUniqueId())
-                        SpawnPlayerForPeer(peerId);
-            }
+        if (!IsHost)
             return;
-        }
 
-        // Solo: one player, randomly placed in the central spawn zone.
-        SpawnPlayerForPeer(1);
+        // Broadcast every player (host + peers) once: each peer then deterministically
+        // builds its own local player and the replicas in its own tree, so the
+        // client always has a character to control and a camera that follows it.
+        SpawnPlayerForPeer(LocalPeerId);
+        foreach (int peerId in Multiplayer.GetPeers())
+            if (peerId != Multiplayer.GetUniqueId())
+                SpawnPlayerForPeer(peerId);
     }
 
     private void SpawnPlayerForPeer(long peerId)
     {
+        // Picks the random (central, non-overlapping) position on the host and
+        // broadcasts the spawn so every peer creates the player at the same spot.
+        Vector2 position = PickSpawnPosition();
+        Rpc(nameof(RpcSpawnPlayer), (int)peerId, position.X, position.Y);
+    }
+
+    /// <summary>
+    /// Runs on every peer: deterministically instantiates the player for a peer
+    /// id under "Players", names it (peer id -> authority), clamps it inside the
+    /// ship and, for the local peer, enables the following camera. This guarantees
+    /// the client both has its own character AND sees the replicated remote ones.
+    /// </summary>
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+    private void RpcSpawnPlayer(int peerId, float x, float y)
+    {
+        if (playersRoot == null)
+        {
+            playersRoot = new Node2D { Name = "Players", ZIndex = 1 };
+            AddChild(playersRoot);
+        }
+
+        if (playersRoot.GetNodeOrNull(peerId.ToString()) != null)
+            return; // already spawned this peer
+
         PackedScene? scene = GD.Load<PackedScene>(PlayerScenePath);
         if (scene == null)
         {
@@ -299,11 +313,14 @@ public partial class ShipManager : Node2D
 
         var player = scene.Instantiate<Player>();
         player.Name = peerId.ToString();
-        player.GlobalPosition = PickSpawnPosition();
-        playersRoot?.AddChild(player);
+        player.GlobalPosition = ClampToWorld(new Vector2(x, y));
+        playersRoot.AddChild(player);
 
         if (peerId == LocalPeerId)
+        {
             localPlayer = player;
+            player.SetCameraLimits(worldBounds); // camera follows the local player
+        }
 
         GD.Print($"[Lobby] Spawned player {peerId} at {player.GlobalPosition}");
     }
@@ -349,14 +366,9 @@ public partial class ShipManager : Node2D
         return fallback;
     }
 
-    private void OnPlayerSpawned(Node node)
+    private Vector2 ClampToWorld(Vector2 position)
     {
-        // Replicated spawn: keep everyone inside the map.
-        if (node is not Player player)
-            return;
-
-        if (!worldBounds.HasPoint(player.GlobalPosition))
-            player.GlobalPosition = spawnBounds.GetCenter();
+        return worldBounds.HasPoint(position) ? position : worldBounds.GetCenter();
     }
 
     private void FindLocalPlayer()
@@ -405,6 +417,13 @@ public partial class ShipManager : Node2D
         if (!string.IsNullOrWhiteSpace(nickname))
             RpcSystem($"{nickname} saiu da partida.");
 
+        // Remove the player replica on every peer, not just the host.
+        Rpc(nameof(RpcRemovePlayer), (int)peerId);
+    }
+
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+    private void RpcRemovePlayer(int peerId)
+    {
         Node? node = playersRoot?.GetNodeOrNull<Player>(peerId.ToString());
         if (node != null)
         {
