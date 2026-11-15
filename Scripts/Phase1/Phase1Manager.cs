@@ -43,6 +43,7 @@ public partial class Phase1Manager : Node2D
 	private Node2D worldLayer;
 	private CanvasLayer hudLayer;
 	private EvaPlayer localPlayer;
+	private MissionSummary missionSummary;
 
 	/// <summary>True while the player must not control the astronaut (minigame open or phase over).</summary>
 	public bool InputLocked =>
@@ -62,6 +63,7 @@ public partial class Phase1Manager : Node2D
 		ConfigureSpawner();
 		SetupHud();
 		SetupScreens();
+		SetupMissionSummary();
 
 		FindLocalPlayer();
 		if (localPlayer == null && !Multiplayer.HasMultiplayerPeer())
@@ -438,6 +440,13 @@ public partial class Phase1Manager : Node2D
 		screenContainer.AddChild(screenBtnMenu);
 	}
 
+	private void SetupMissionSummary()
+	{
+		missionSummary = new MissionSummary { Name = "MissionSummary" };
+		missionSummary.ContinuePressed += () => missionSummary.HideScreen();
+		AddChild(missionSummary);
+	}
+
 	public void RequestMinigame()
 	{
 		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
@@ -542,6 +551,22 @@ public partial class Phase1Manager : Node2D
 		screenBtnNext.Visible = ResourceLoader.Exists(NextScenePath);
 		screenBtnMenu.Text = "Back to Menu";
 		screenBtnMenu.Visible = true;
+
+		// Show the end-of-mission ranking (F-S) on top, together with the
+		// player's statistics. In multiplayer every peer computes their own, so
+		// each player sees their own rank. CONTINUE hides this overlay and the
+		// standard success buttons (Next phase / Back to Menu) appear below.
+		FindLocalPlayer();
+		if (localPlayer != null)
+			missionSummary.Show(
+				MissionTime,
+				localPlayer.GetFatigueStrikes(),
+				localPlayer.IsRuptured,
+				localPlayer.GetSaferCharges(),
+				"PHASE 1 COMPLETE");
+		else
+			missionSummary.Show(MissionTime, 0, false, 0, "PHASE 1 COMPLETE");
+
 		Sfx.Play(this, "mission_complete");
 		UpdateObjective();
 	}

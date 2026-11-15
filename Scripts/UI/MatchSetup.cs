@@ -13,7 +13,7 @@ public partial class MatchSetup : Control
 {
     private const string HandlerPath = "/root/HighLevelNetworkHandler";
     private const string MainMenuScenePath = "res://Scenes/MainMenu.tscn";
-    private const string CutsceneScenePath = "res://Scenes/Cutscenes/Cutscene1.tscn";
+    private const string MissionScenePath = "res://Scenes/Phase1/Phase1.tscn";
     private const string SpaceshipSheetPath = "res://Sprites/UI/MainMenu/main menu/spaceship sheet.png";
 
     private const int ShipFrameWidth = 384;
@@ -623,10 +623,11 @@ public partial class MatchSetup : Control
 
         _matchStarted = true;
 
+        // The host started the mission: everyone moves to Phase 1 together.
         if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeScene(CutsceneScenePath);
+            SceneTransitions.Instance.ChangeScene(MissionScenePath);
         else
-            GetTree().ChangeSceneToFile(CutsceneScenePath);
+            GetTree().ChangeSceneToFile(MissionScenePath);
     }
 
     private void OnBackPressed()
