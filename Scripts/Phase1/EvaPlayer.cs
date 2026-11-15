@@ -350,9 +350,11 @@ public partial class EvaPlayer : CharacterBody2D
 			// Crisp RCS: drive each axis directly toward the input-commanded speed so the
 			// response is immediate (no exponential ramp) and it strictly caps at MaxDriftSpeed.
 			// Holding a direction moves the axis, never building past the cap.
-			float accel = SuitAcceleration * dt;
-			Velocity.X = Mathf.MoveToward(Velocity.X, inputDir.X * MaxDriftSpeed, accel);
-			Velocity.Y = Mathf.MoveToward(Velocity.Y, inputDir.Y * MaxDriftSpeed, accel);
+			// Note: Velocity components are read-only (property returns a copy), so assign a whole Vector2.
+			float accelStep = SuitAcceleration * dt;
+			float vx = Mathf.MoveToward(Velocity.X, inputDir.X * MaxDriftSpeed, accelStep);
+			float vy = Mathf.MoveToward(Velocity.Y, inputDir.Y * MaxDriftSpeed, accelStep);
+			Velocity = new Vector2(vx, vy);
 			SpawnThrusterPuff(inputDir, dt);
 		}
 		else
