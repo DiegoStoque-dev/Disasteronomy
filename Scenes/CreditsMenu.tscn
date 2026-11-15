@@ -1,34 +1,36 @@
-[gd_scene format=3 uid="uid://credits_menu_tscn"]
+[gd_scene format=3 uid="uid://bovvnv5oqfu4u"]
 
-[ext_resource type="Script" path="res://Scripts/BackToMainMenu.gd" id="1_back_script"]
+[ext_resource type="Script" uid="uid://cu3gca1kjc4xx" path="res://Scripts/BackToMainMenu.gd" id="1_back_script"]
 
-[node name="CreditsMenu" type="Control"]
+[node name="CreditsMenu" type="Control" unique_id=953347747]
+layout_mode = 3
+anchors_preset = 0
 script = ExtResource("1_back_script")
-anchors_preset = 15
-size_flags_stretch_ratio = 1.0
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
-anchors_preset = 15
-alignment = 1
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=583423095]
 custom_minimum_size = Vector2(400, 300)
+layout_mode = 0
+offset_right = 400.0
+offset_bottom = 300.0
+alignment = 1
 
-[node name="LabelTitle" type="Label" parent="VBoxContainer"]
+[node name="LabelTitle" type="Label" parent="VBoxContainer" unique_id=1041244061]
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 text = "Credits"
 horizontal_alignment = 1
 vertical_alignment = 1
-custom_minimum_size = Vector2(0, 60)
 
-[node name="LabelCredits" type="Label" parent="VBoxContainer"]
+[node name="LabelCredits" type="Label" parent="VBoxContainer" unique_id=821736599]
 layout_mode = 2
-text = "Disasteronomy\nDeveloped for NASA Space Apps\n\nAll rights reserved."
+text = "Disasteronomy
+Developed for NASA Space Apps
+
+All rights reserved."
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BtnBack" type="Button" parent="VBoxContainer"]
+[node name="BtnBack" type="Button" parent="VBoxContainer" unique_id=1854932553]
+custom_minimum_size = Vector2(200, 40)
 layout_mode = 2
 text = "Back to Main Menu"
-custom_minimum_size = Vector2(200, 40)
-focus_mode = 2
-cursor_shape = 0
-

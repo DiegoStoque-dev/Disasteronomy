@@ -2,8 +2,9 @@
 
 [ext_resource type="Script" uid="uid://ctdeotaagydc4" path="res://Scripts/Player.cs" id="1_wi0c6"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_lobby_player"]
-size = Vector2(10, 14)
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_g28q7"]
+radius = 8.5
+height = 34.5
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_lobby_player"]
 properties/0/path = NodePath(".:position")
@@ -15,34 +16,37 @@ properties/1/replication_mode = 1
 properties/2/path = NodePath("AnimatedSprite2D:frame")
 properties/2/spawn = true
 properties/2/replication_mode = 1
+properties/3/path = NodePath(".:velocity")
+properties/3/spawn = true
+properties/3/replication_mode = 1
 
-[node name="Player" type="CharacterBody2D"]
+[node name="Player" type="CharacterBody2D" unique_id=1413738658]
 scale = Vector2(2, 2)
-collision_layer = 1
 collision_mask = 2
 script = ExtResource("1_wi0c6")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(0, -7)
-shape = SubResource("RectangleShape2D_lobby_player")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=996215126]
+position = Vector2(0, -15.25)
+shape = SubResource("CapsuleShape2D_g28q7")
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1923830817]
 position = Vector2(0, -17)
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1759020957]
+position = Vector2(0, -16)
 offset = Vector2(5, 5)
-zoom = Vector2(2.2, 2.2)
+zoom = Vector2(2.8, 2.8)
 position_smoothing_enabled = true
 
-[node name="NicknameLabel" type="Label" parent="."]
+[node name="NicknameLabel" type="Label" parent="." unique_id=1299834805]
 z_index = 1
-offset_left = -6.25
+offset_left = -7.75
 offset_top = -37.5
-offset_right = 56.75
+offset_right = 71.25
 offset_bottom = -14.5
 scale = Vector2(0.2, 0.2)
 text = "Jogador"
 horizontal_alignment = 1
 
-[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="." unique_id=2019169952]
 replication_config = SubResource("SceneReplicationConfig_lobby_player")
