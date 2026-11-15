@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bcb3ydm7akhsb"
-path="res://.godot/imported/disasteronomy.png-e758e139a62967330e514d890aed0c6c.ctex"
+uid="uid://dcj7mxgmfmp10"
+path="res://.godot/imported/leave.png-606ae8155b6dea9328acf953e4b8912b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/UI/MainMenu/disasteronomy.png"
-dest_files=["res://.godot/imported/disasteronomy.png-e758e139a62967330e514d890aed0c6c.ctex"]
+source_file="res://Sprites/UI/MainMenu/botoes/leave.png"
+dest_files=["res://.godot/imported/leave.png-606ae8155b6dea9328acf953e4b8912b.ctex"]
 
 [params]
 

@@ -8,21 +8,21 @@ public partial class Global : Node
 
     public override void _Ready()
     {
-        // Variáveis globais do jogo podem ser inicializadas aqui
+        // Global game variables can be initialized here
     }
 
     /// <summary>
-    /// Verifica se existe um arquivo de save salvo.
+    /// Checks if a save file exists.
     /// </summary>
-    public bool ExisteSave()
+    public bool HasSave()
     {
         return Godot.FileAccess.FileExists(SAVE_FILE);
     }
 
     /// <summary>
-    /// Salva os dados do jogo (reset para novo jogo ou progresso atual).
+    /// Saves game data (reset for new game or current progress).
     /// </summary>
-    public void Salvar()
+    public void Save()
     {
         try
         {
@@ -30,23 +30,23 @@ public partial class Global : Node
             using var file = Godot.FileAccess.Open(SAVE_FILE, Godot.FileAccess.ModeFlags.Write);
             file.StoreString("DISASTERONOMY_SAVE_V1");
             file.Store64((ulong)Time.GetUnixTimeFromSystem());
-            file.Store32(1); // versão do save
-            GD.Print("[Global] Save salvo em: " + SAVE_FILE);
+            file.Store32(1); // save version
+            GD.Print("[Global] Save saved at: " + SAVE_FILE);
         }
         catch (Exception e)
         {
-            GD.PrintErr("[Global] Erro ao salvar: " + e.Message);
+            GD.PrintErr("[Global] Error saving: " + e.Message);
         }
     }
 
     /// <summary>
-    /// Carrega os dados do save existente.
+    /// Loads existing save data.
     /// </summary>
-    public void Carregar()
+    public void Load()
     {
-        if (!ExisteSave())
+        if (!HasSave())
         {
-            GD.PrintErr("[Global] Nenhum save encontrado para carregar.");
+            GD.PrintErr("[Global] No save found to load.");
             return;
         }
 
@@ -55,11 +55,11 @@ public partial class Global : Node
             using var file = Godot.FileAccess.Open(SAVE_FILE, Godot.FileAccess.ModeFlags.Read);
             file.Get64(); // timestamp
             var version = file.Get32();
-            GD.Print($"[Global] Save carregado: versão {version}");
+            GD.Print($"[Global] Save loaded: version {version}");
         }
         catch (Exception e)
         {
-            GD.PrintErr("[Global] Erro ao carregar save: " + e.Message);
+            GD.PrintErr("[Global] Error loading save: " + e.Message);
         }
     }
 }
