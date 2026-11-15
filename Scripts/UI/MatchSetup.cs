@@ -624,6 +624,10 @@ public partial class MatchSetup : Control
 
         _matchStarted = true;
 
+        // A new match (MatchSetup Start -> shared intro -> Phase 1) clears the in-memory
+        // Level 1 progress, so the Lobby Terminal loads Level 1 again for a fresh run.
+        GetNodeOrNull<Global>("/root/Global")?.ResetProgress();
+
         // The host started the mission: everyone begins the shared intro chain
         // together (Cutscene1 -> Cutscene2 -> Cutscene3), which then leads into
         // Phase 1. The cutscenes still play - nothing is skipped.

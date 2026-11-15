@@ -34,6 +34,8 @@ public partial class ShipManager : Node2D
     [Export] public float TerminalCountdown = 5f;
     /// <summary>Scene opened after the fade (Phase 1 / EVA).</summary>
     [Export] public string PhaseScenePath = "res://Scenes/Phase1/Phase1.tscn";
+    /// <summary>Level 2 scene. If it is missing, the lobby report stays in the lobby.</summary>
+    private const string Level2ScenePath = "res://Scenes/Phase2/Phase2.tscn";
     /// <summary>Player scene spawned inside the lobby.</summary>
     [Export] public string PlayerScenePath = "res://Scenes/Player.tscn";
 
@@ -50,6 +52,7 @@ public partial class ShipManager : Node2D
     private Node2D? playersRoot;
     private ShipHud? hud;
     private Player? localPlayer;
+    private MissionSummary? missionSummary;   // Level 1 report shown at the Terminal after the EVA.
 
     private bool terminalBusy;
     private bool transitioning;
@@ -68,6 +71,7 @@ public partial class ShipManager : Node2D
         ReadLevelLayout();
         BuildBlackBackdrop();
         SetupHud();
+        SetupMissionSummary();
         SetupObjectives();
         ConfigureSpawner();
         SpawnPlayers();
@@ -316,6 +320,18 @@ public partial class ShipManager : Node2D
         player.GlobalPosition = ClampToWorld(new Vector2(x, y));
         playersRoot.AddChild(player);
 
+        // Defensive: the AnimatedSprite2D may come from the scene with an editor
+        // placeholder animation that does not exist after the character frames are
+        // rebuilt; force it onto the real idle animation to avoid any set_animation
+        // error on secondary/remote instantiations.
+        if (player.GetNodeOrNull<AnimatedSprite2D>("AnimatedSprite2D") is { } anim2D &&
+            anim2D.SpriteFrames != null &&
+            anim2D.SpriteFrames.HasAnimation("idle"))
+        {
+            anim2D.Animation = "idle";
+            anim2D.Play();
+        }
+
         if (peerId == LocalPeerId)
         {
             localPlayer = player;
@@ -433,6 +449,67 @@ public partial class ShipManager : Node2D
     }
 
     // ------------------------------------------------------------------
+    // Level 1 report (after the EVA, the Terminal no longer reloads Level 1)
+    // ------------------------------------------------------------------
+
+    private void SetupMissionSummary()
+    {
+        missionSummary = new MissionSummary { Name = "MissionSummary" };
+        AddChild(missionSummary);
+        missionSummary.ContinuePressed += OnSummaryContinue;
+    }
+
+    private void ShowLevelReport()
+    {
+        Global? global = Global.Instance ?? GetNodeOrNull<Global>("/root/Global");
+        if (global == null || missionSummary == null)
+            return;
+
+        missionSummary.Show(
+            global.Level1LastTime,
+            global.Level1LastStrikes,
+            global.Level1LastRuptured,
+            global.Level1LastSafer,
+            "LEVEL 1 REPORT");
+    }
+
+    private void OnSummaryContinue()
+    {
+        missionSummary?.HideScreen();
+
+        // Phase 2 is not built yet: show a short in-lobby message and stay here.
+        if (!ResourceLoader.Exists(Level2ScenePath))
+        {
+            LogSystem("LEVEL 2 - COMING SOON");
+            return;
+        }
+
+        // Phase 2 exists: the mission briefing is shown and, once its Start button
+        // dismisses the screen, the same mechanism as before loads Phase 2.
+        BriefingScreen briefing = BriefingScreen.Open(
+            this,
+            "LEVEL 2 - DSH",
+            "Comms with CAPCOM drop almost instantly and a light smoke spreads through the ship. " +
+            "By the time you put on your protection suits, it already covers half your view. " +
+            "The ship is now a maze: split up, find the ECLSS valves and the central module. " +
+            "Beware of shocks: touching one drains your sanity.",
+            "");
+        LoadLevel2AfterBriefing(briefing);
+    }
+
+    /// <summary>After the briefing's Start button dismisses it, loads Phase 2 (same mechanism as before).</summary>
+    private async void LoadLevel2AfterBriefing(BriefingScreen briefing)
+    {
+        await ToSignal(briefing, Node.SignalName.TreeExited);
+        if (!IsInstanceValid(this)) return;
+
+        if (SceneTransitions.Instance != null)
+            SceneTransitions.Instance.ChangeScene(Level2ScenePath);
+        else
+            GetTree().ChangeSceneToFile(Level2ScenePath);
+    }
+
+    // ------------------------------------------------------------------
     // Terminal activation (host only) -> synchronized countdown -> fade
     // ------------------------------------------------------------------
 
@@ -440,6 +517,16 @@ public partial class ShipManager : Node2D
     {
         if (!IsHost || terminalBusy || transitioning)
             return;
+
+        // After Level 1 the Terminal does not load it again: the host opens the stored
+        // report on every peer through the same RPC used for the countdown.
+        Global? global = Global.Instance ?? GetNodeOrNull<Global>("/root/Global");
+        if (global != null && global.Level1Completed)
+        {
+            hud?.ShowInteractPrompt(false);
+            Rpc(nameof(RpcNotifyTerminalActivated));
+            return;
+        }
 
         // Guards against multiple players activating it at the same time.
         terminalBusy = true;
@@ -464,6 +551,15 @@ public partial class ShipManager : Node2D
     {
         if (transitioning)
             return;
+
+        // Same RPC used for the Level 1 countdown now also carries the report branch:
+        // after the EVA every peer shows the stored report instead of starting a countdown.
+        Global? global = Global.Instance ?? GetNodeOrNull<Global>("/root/Global");
+        if (global != null && global.Level1Completed)
+        {
+            ShowLevelReport();
+            return;
+        }
 
         terminalBusy = true;
         countdownRemaining = TerminalCountdown;

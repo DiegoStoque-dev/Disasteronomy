@@ -19,8 +19,8 @@ public partial class Phase1Manager : Node2D
 	// ------------------------------------------------------------------
 	// SHIP / CAMERA
 	// ------------------------------------------------------------------
-	[Export] public string ShipTexturePath = "res://Sprites/ship_exterior.png";
-	[Export] public float ShipScale = 1f;
+	[Export] public string ShipTexturePath = "res://Sprites/map1.png";
+	[Export] public float ShipScale = 1.5f;
 	[Export] public float CameraZoom = 1f;
 	[Export] public float BoundsMargin = 40f;      // extra space around the image for bounds / camera limits.
 	[Export] public float FadeInDuration = 1.5f;   // slow fade from black at level start.
@@ -29,13 +29,25 @@ public partial class Phase1Manager : Node2D
 	// PISTOL TOOL
 	// ------------------------------------------------------------------
 	[Export] public string ToolTexturePath = "res://Sprites/pistol_tool.png";
-	[Export] public Vector2 ToolImagePos = new Vector2(760, 760); // image pixels.
+	[Export] public Vector2 ToolImagePos = new Vector2(350, 400); // image pixels.
 	[Export] public float PickupRadius = 40f;
 
 	// ------------------------------------------------------------------
 	// CPS
 	// ------------------------------------------------------------------
-	[Export] public Vector2 CpsImagePos = new Vector2(624, 344); // image pixels.
+	[Export] public Vector2 CpsImagePos = new Vector2(244, 14); // image pixels.
+
+	// ------------------------------------------------------------------
+	// DIRECTION ARROW (HUD): shown only when the next target is far away.
+	// ------------------------------------------------------------------
+	[Export] public float ArrowShowDistance = 600f;  // world px: show the arrow only beyond this distance.
+	[Export] public float ArrowOrbitRadius = 90f;    // screen px: the arrow orbits the player at this radius.
+
+	// ------------------------------------------------------------------
+	// NEIGHBOR GRAPH (one-grip-at-a-time climbing)
+	// ------------------------------------------------------------------
+	[Export] public float NeighborMaxDistance = 115f; // world px: grips closer than this (with no grip
+													  // sitting on the segment) are direct neighbors.
 
 	[Export] public float MissionTime = 0f;
 	[Export] public string NextScenePath = "res://Scenes/Phase2/Phase2.tscn";
@@ -55,12 +67,22 @@ public partial class Phase1Manager : Node2D
 
 	private readonly List<GripDef> GripDefs = new()
 	{
-		new GripDef { Pos = new Vector2(300, 300), IsStart = true, IsAirlock = true }, // start + return (side of ship)
-		new GripDef { Pos = new Vector2(410, 300) },
-		new GripDef { Pos = new Vector2(520, 270) },
-		new GripDef { Pos = new Vector2(630, 300), IsCps = true },                     // next to the CPS
-		new GripDef { Pos = new Vector2(742, 332) },
-		new GripDef { Pos = new Vector2(852, 360) },
+		new GripDef { Pos = new Vector2(45, 199), IsStart = true, IsAirlock = true }, // left bracket (start + airlock)
+		new GripDef { Pos = new Vector2(81, 189) },                                  // gold tab on top of left module
+		new GripDef { Pos = new Vector2(117, 190) },                                 // gold tab on top of left module
+		new GripDef { Pos = new Vector2(153, 189) },                                 // gold tab on top of left module
+		new GripDef { Pos = new Vector2(118, 215) },                                 // gold diamond (CPS) top
+		new GripDef { Pos = new Vector2(118, 245) },                                 // gold diamond (CPS) center
+		new GripDef { Pos = new Vector2(118, 278) },                                 // gold diamond (CPS) bottom
+		new GripDef { Pos = new Vector2(214, 218) },                                 // top tab at solar panel base
+		new GripDef { Pos = new Vector2(272, 218) },                                 // top tab at solar panel base
+		new GripDef { Pos = new Vector2(244, 200) },                                 // long vertical gold rail
+		new GripDef { Pos = new Vector2(244, 155) },                                 // long vertical gold rail
+		new GripDef { Pos = new Vector2(244, 110) },                                 // long vertical gold rail
+		new GripDef { Pos = new Vector2(244, 65) },                                  // long vertical gold rail
+		new GripDef { Pos = new Vector2(244, 20), IsCps = true },                    // long vertical gold rail (top cap = CPS)
+		new GripDef { Pos = new Vector2(214, 278) },                                 // bottom tab at solar panel base
+		new GripDef { Pos = new Vector2(272, 278) },                                 // bottom tab at solar panel base
 	};
 
 	private const float TetherValidationMargin = 40f;
@@ -102,10 +124,15 @@ public partial class Phase1Manager : Node2D
 	private Vector2 shipTextureSize = new Vector2(1600, 900); // unscaled image size.
 	private Rect2 levelBounds;
 	private readonly List<Grip> grips = new();
+	private readonly HashSet<(Grip A, Grip B)> neighborPairs = new();
 	private Grip startGrip;
 	private Grip airlockGrip;
 	private Node toolNode;                    // the loose pistol tool.
 	private Vector2 toolWorldPos;
+
+	// HUD direction arrow.
+	private Control arrowControl;             // rotated filled triangle pointing at the target.
+	private Label arrowLabel;                 // tiny distance label next to the arrow.
 
 	// Debug overlay (F2).
 	private bool debugActive = false;
@@ -208,6 +235,7 @@ public partial class Phase1Manager : Node2D
 
 	public override void _Process(double delta)
 	{
+		UpdateDirectionArrow();
 		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
 
 		MissionTime += (float)delta;
@@ -310,6 +338,7 @@ public partial class Phase1Manager : Node2D
 		BuildShip();
 		BuildCpsMarker();
 		BuildGrips();
+		BuildNeighborGraph();
 		BuildTool();
 		ComputeBounds();
 	}
@@ -376,6 +405,54 @@ private void BuildGrips()
 
 		if (airlockGrip == null) airlockGrip = startGrip;
 		if (startGrip == null && grips.Count > 0) startGrip = grips[0];
+	}
+
+	/// <summary>
+	/// Builds the one-grip-at-a-time climb graph once. Two grips are neighbors when they
+	/// are within <see cref="NeighborMaxDistance"/> and no other grip lies on the segment
+	/// between them (that grip would be skipped otherwise).
+	/// </summary>
+	private void BuildNeighborGraph()
+	{
+		neighborPairs.Clear();
+		for (int i = 0; i < grips.Count; i++)
+		{
+			for (int j = i + 1; j < grips.Count; j++)
+			{
+				Grip a = grips[i], b = grips[j];
+				if (a.GlobalPosition.DistanceTo(b.GlobalPosition) > NeighborMaxDistance)
+					continue;
+
+				bool skipped = false;
+				foreach (Grip c in grips)
+				{
+					if (c == a || c == b) continue;
+					if (DistanceToSegment(c.GlobalPosition, a.GlobalPosition, b.GlobalPosition) <= 14f)
+					{
+						skipped = true;
+						break;
+					}
+				}
+				if (!skipped)
+					neighborPairs.Add((a, b));
+			}
+		}
+	}
+
+	/// <summary>True when two grips are directly adjacent in the climb graph (one grip per grab).</summary>
+	public bool AreNeighbors(Grip a, Grip b)
+	{
+		if (a == null || b == null) return false;
+		return neighborPairs.Contains((a, b)) || neighborPairs.Contains((b, a));
+	}
+
+	private static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b)
+	{
+		Vector2 ab = b - a;
+		float lenSq = ab.LengthSquared();
+		if (lenSq <= 0.0001f) return p.DistanceTo(a);
+		float t = Mathf.Clamp((p - a).Dot(ab) / lenSq, 0f, 1f);
+		return p.DistanceTo(a + ab * t);
 	}
 
 	private void BuildTool()
@@ -528,6 +605,23 @@ private void SetupHud()
 		hudDebug = new Label { Position = new Vector2(20, 140), Text = "Debug: waiting..." };
 		hudLayer.AddChild(hudDebug);
 
+		arrowControl = new DirectionArrow
+		{
+			Name = "DirectionArrow",
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			Visible = false
+		};
+		hudLayer.AddChild(arrowControl);
+
+		arrowLabel = new Label
+		{
+			Name = "DirectionArrowLabel",
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			Visible = false
+		};
+		arrowLabel.AddThemeFontSizeOverride("font_size", 14);
+		hudLayer.AddChild(arrowLabel);
+
 		hudPrompt = new Label { Text = "", HorizontalAlignment = HorizontalAlignment.Center };
 		hudLayer.AddChild(hudPrompt);
 		hudPrompt.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.BottomWide);
@@ -635,6 +729,11 @@ private void SetupDecor()
 	public void ToggleDebugOverlay()
 	{
 		debugActive = !debugActive;
+		foreach (Grip g in grips)
+		{
+			g.ShowVisual = debugActive;
+			g.QueueRedraw();
+		}
 		foreach (Label l in debugGripLabels) l.Visible = debugActive;
 		if (debugToolLabel != null) debugToolLabel.Visible = debugActive;
 		if (debugMouseLabel != null) debugMouseLabel.Visible = debugActive;
@@ -671,6 +770,78 @@ private void SetupDecor()
 		tween.TweenCallback(Callable.From(() => layer.QueueFree()));
 	}
 
+	/// <summary>
+	/// HUD arrow pointing at the current objective (pistol tool / CPS / returning airlock).
+	/// Shown only while the target is farther than ArrowShowDistance world px.
+	/// </summary>
+	private void UpdateDirectionArrow()
+	{
+		Vector2 worldTarget = Vector2.Zero;
+		bool hasTarget = false;
+
+		if (localPlayer != null && IsInstanceValid(localPlayer))
+		{
+			switch (state)
+			{
+				case PhaseState.Minigame:
+				case PhaseState.Completed:
+				case PhaseState.Failed:
+					break; // no arrow while the minigame / end screens are up.
+				default:
+					if (!localPlayer.HasTool && toolNode != null && IsInstanceValid(toolNode))
+					{
+						worldTarget = toolWorldPos;
+						hasTarget = true;
+					}
+					else if (localPlayer.HasTool && !localCompleted)
+					{
+						worldTarget = CpsWorldPosition;
+						hasTarget = true;
+					}
+					else if (localCompleted)
+					{
+						Grip returnGrip = airlockGrip != null ? airlockGrip : startGrip;
+						if (returnGrip != null)
+						{
+							worldTarget = returnGrip.GlobalPosition;
+							hasTarget = true;
+						}
+					}
+					break;
+			}
+		}
+
+		if (!hasTarget)
+		{
+			HideDirectionArrow();
+			return;
+		}
+
+		float dist = localPlayer.GlobalPosition.DistanceTo(worldTarget);
+		if (dist <= ArrowShowDistance)
+		{
+			HideDirectionArrow();
+			return;
+		}
+
+		Vector2 dir = (worldTarget - localPlayer.GlobalPosition).Normalized();
+		Vector2 playerScreen = localPlayer.GetGlobalTransformWithCanvas().Origin;
+		Vector2 arrowPos = playerScreen + dir * ArrowOrbitRadius;
+
+		arrowControl.Position = arrowPos;
+		arrowControl.Rotation = dir.Angle();
+		arrowControl.Visible = true;
+
+		arrowLabel.Text = $"{Mathf.RoundToInt(dist / 10f)}m";
+		arrowLabel.Position = arrowPos + new Vector2(20f, -30f);
+		arrowLabel.Visible = true;
+	}
+
+	private void HideDirectionArrow()
+	{
+		if (arrowControl != null) arrowControl.Visible = false;
+		if (arrowLabel != null) arrowLabel.Visible = false;
+	}
 	private void UpdateObjective()
 	{
 		bool noTool = localPlayer != null && !localPlayer.HasTool;
@@ -723,7 +894,7 @@ private void SetupDecor()
 			Grip g = queue.Dequeue();
 			foreach (Grip n in grips)
 			{
-				if (!reachable.Contains(n) && g.GlobalPosition.DistanceTo(n.GlobalPosition) <= reach)
+				if (!reachable.Contains(n) && AreNeighbors(g, n))
 				{
 					reachable.Add(n);
 					queue.Enqueue(n);
@@ -738,9 +909,19 @@ private void SetupDecor()
 			if (g.IsCps && reachable.Contains(g)) cpsOk = true;
 			if (g.IsAirlock && reachable.Contains(g)) airOk = true;
 			if (!reachable.Contains(g))
-				GD.PushWarning($"[Level1] VALIDATION: grip #{i} at img {WorldToImage(g.GlobalPosition)} is NOT reachable from the start (reach {reach}).");
+				GD.PushWarning($"[Level1] VALIDATION: grip #{i} at img {WorldToImage(g.GlobalPosition)} is NOT reachable via the neighbor graph (NeighborMaxDistance {NeighborMaxDistance}).");
 		}
-		GD.Print($"[Level1] VALIDATION: start reach {reach}; IsCps reachable={cpsOk}; IsAirlock reachable={airOk}");
+		GD.Print($"[Level1] VALIDATION: neighbor graph (max {NeighborMaxDistance}); IsCps reachable={cpsOk}; IsAirlock reachable={airOk}");
+
+		// Warn about any grip that has no neighbor at all (it could never be left again).
+		for (int i = 0; i < grips.Count; i++)
+		{
+			bool isolated = true;
+			for (int j = 0; j < grips.Count && isolated; j++)
+				if (j != i && AreNeighbors(grips[i], grips[j])) isolated = false;
+			if (isolated)
+				GD.PushWarning($"[Level1] VALIDATION: grip #{i} at img {WorldToImage(grips[i].GlobalPosition)} has 0 neighbors.");
+		}
 
 		// Tool must be out of arm reach of every grip (it must need the SAFER), yet
 		// reachable by the rope from the start so reeling in works.
@@ -806,7 +987,7 @@ private void SetupScreens()
 		screenContainer.AddChild(screenBtnNext);
 
 		screenBtnMenu = new Button { Text = "Back to Menu" };
-		screenBtnMenu.Pressed += BackToMenu;
+		screenBtnMenu.Pressed += OnScreenMenuPressed;
 		screenContainer.AddChild(screenBtnMenu);
 	}
 
@@ -895,8 +1076,8 @@ private void ShowSuccessScreen()
 		screenReason.Text = "Thermal actuators unfrozen. Pistol tool recovered and returned to the airlock.";
 		screenDetails.Text = $"Time: {MissionTime:F1}s | Energy: 160 kWh | Comms: stable (1.3-2s latency) | Mass: ~115,000 kg";
 		screenBtnRetry.Visible = false;
-		screenBtnNext.Visible = ResourceLoader.Exists(NextScenePath);
-		screenBtnMenu.Text = "Back to Menu";
+		screenBtnNext.Visible = false;              // progression goes through the Lobby (Return to Lobby).
+		screenBtnMenu.Text = "Return to Lobby";
 		screenBtnMenu.Visible = true;
 
 		// End-of-mission ranking (F-S). CONTINUE hides this overlay and the standard
@@ -904,6 +1085,19 @@ private void ShowSuccessScreen()
 		// TODO(flow): when a GameFlow/"return to DHS" progression exists, this should
 		// load the DHS (Level 2) scene instead of stopping on the result screen.
 		FindLocalPlayer();
+
+		// Remember the Level 1 result in memory only (Global). The Lobby Terminal uses it
+		// to show this report and route to Phase 2; ResetProgress() clears it for a new match.
+		Global global = Global.Instance;
+		if (global != null)
+		{
+			global.Level1Completed = true;
+			global.Level1LastTime = MissionTime;
+			global.Level1LastStrikes = localPlayer != null ? localPlayer.GetFatigueStrikes() : 0;
+			global.Level1LastRuptured = localPlayer != null && localPlayer.IsRuptured;
+			global.Level1LastSafer = localPlayer != null ? localPlayer.GetSaferCharges() : 0;
+		}
+
 		if (localPlayer != null)
 			missionSummary.Show(
 				MissionTime,
@@ -949,5 +1143,40 @@ private void ShowSuccessScreen()
 	private void BackToMenu()
 	{
 		GetTree().ChangeSceneToFile("res://Scenes/MainMenu.tscn");
+	}
+
+	/// <summary>
+	/// The screen button means different things per screen: on the SUCCESS screen it returns the
+	/// player to the Lobby (where the Terminal routes to Phase 2); on every other screen (failure,
+	/// main menu) it stays a plain "Back to Menu".
+	/// </summary>
+	private void OnScreenMenuPressed()
+	{
+		if (state == PhaseState.Completed)
+			ReturnToLobby();
+		else
+			BackToMenu();
+	}
+
+	private void ReturnToLobby()
+	{
+		if (SceneTransitions.Instance != null)
+			SceneTransitions.Instance.ChangeScene("res://Scenes/Lobby/lobby.tscn");
+		else
+			GetTree().ChangeSceneToFile("res://Scenes/Lobby/lobby.tscn");
+	}
+}
+
+/// <summary>
+/// HUD direction arrow: a small filled yellow triangle drawn by <see cref="Phase1Manager"/>,
+/// which positions and rotates it on the screen so it points at a far-away target.
+/// </summary>
+public partial class DirectionArrow : Control
+{
+	public override void _Draw()
+	{
+		DrawColoredPolygon(
+			new Vector2[] { new Vector2(7, 0), new Vector2(-7, -7), new Vector2(-7, 7) },
+			new Color(1f, 1f, 0f, 0.85f));
 	}
 }
