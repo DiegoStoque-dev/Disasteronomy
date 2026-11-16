@@ -87,7 +87,7 @@ Music/                 Audio loops (SFX go in Music/sfx/)
   break-on-extreme, SAFER jets, and a CPS spin-the-mouse minigame. Reached by running
   `Scenes/Phase1/Phase1.tscn` (or from the menu via the intended flow).
 - **Phase 2 — ISS Lab ammonia leak (planned):** 3-player duct work + rebooting software.
-- **Phase 3 — dark MPLM maze (planned):** sanity bar + Orion capsule undocking.
+- **Phase 3 — dark MPLM maze (planned):** sanity bar + Orion capsule undocking. (SOON)
 
 ## ⚙️ Included settings
 
