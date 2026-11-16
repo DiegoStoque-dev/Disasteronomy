@@ -19,17 +19,18 @@ using Godot;
 ///     ceiling still block — it collides on world layer 2 only).
 ///   - The camera is enabled only on the locally-controlled player and follows
 ///     with position smoothing, clamped to the lobby bounds via SetCameraLimits.
-///   - A MultiplayerSynchronizer replicates position/velocity + animation so the
-///     movement of other players is smooth on every machine.
+///   - The owning peer sends movement snapshots; remote players interpolate them
+///     and apply the received animation state.
 ///   - While the chat input has focus, InputEnabled is false (set by the lobby
 ///     manager from the LineEdit focus): typing A/D/Space only enters text and
 ///     the character never moves until the focus is released.
 ///
-/// Sprites come from the Characters catalog (Sprites/Traje_Protecao/...), so each
-/// character shows its own suit: idle/walk/jump, flipped by horizontal velocity.
+/// Sprites come from the Characters catalog using the suit selected for the scene.
 /// </summary>
 public partial class Player : CharacterBody2D
 {
+    [Export] public CharacterSuit Suit = CharacterSuit.Protection;
+
     // --- Sazsazan platformer movement (adapted microgravity) ---
     [Export] public float MoveSpeed = 150f;
     /// <summary>Ground horizontal acceleration (responsive start, reduced).</summary>
@@ -76,6 +77,10 @@ public partial class Player : CharacterBody2D
     private string facing = "right";
     private float _coyoteTimer;
     private int _extraJumpsLeft;
+    private Vector2 remoteTargetPosition;
+    private bool hasRemotePosition;
+
+    private const float RemotePositionSmoothingSpeed = 18f;
 
     public override void _EnterTree()
     {
@@ -123,9 +128,49 @@ public partial class Player : CharacterBody2D
             camera.PositionSmoothingSpeed = 7f;
         }
 
+        remoteTargetPosition = Position;
+
         // Standalone (Player.tscn opened directly) still gets a small room so the
         // platformer movement is testable without the Lobby scene.
         EnsureStandaloneRoom();
+    }
+
+    [Rpc(
+        MultiplayerApi.RpcMode.Authority,
+        CallLocal = true,
+        TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable
+    )]
+    private void RpcApplyNetworkState(
+        float x,
+        float y,
+        float velocityX,
+        float velocityY,
+        string animation,
+        int frame,
+        bool flipH
+    )
+    {
+        if (!Multiplayer.HasMultiplayerPeer() || IsMultiplayerAuthority())
+            return;
+
+        remoteTargetPosition = new Vector2(x, y);
+        Velocity = new Vector2(velocityX, velocityY);
+        if (!hasRemotePosition)
+        {
+            hasRemotePosition = true;
+            Position = remoteTargetPosition;
+        }
+
+        if (sprite?.SpriteFrames == null || !sprite.SpriteFrames.HasAnimation(animation))
+            return;
+
+        if (sprite.Animation != animation)
+            sprite.Play(animation);
+
+        int frameCount = sprite.SpriteFrames.GetFrameCount(animation);
+        if (frameCount > 0)
+            sprite.Frame = Mathf.Clamp(frame, 0, frameCount - 1);
+        sprite.FlipH = flipH;
     }
 
     /// <summary>Clamps the camera to the room and keeps the character framed.</summary>
@@ -198,9 +243,9 @@ public partial class Player : CharacterBody2D
         SpriteFrames combined = new();
         combined.RemoveAnimation("default");
 
-        SpriteFrames? idle = Characters.BuildIdleFrames(characterIndex);
-        SpriteFrames? walk = Characters.BuildWalkFrames(characterIndex);
-        SpriteFrames? jump = Characters.BuildJumpFrames(characterIndex);
+        SpriteFrames? idle = Characters.BuildIdleFrames(characterIndex, Suit);
+        SpriteFrames? walk = Characters.BuildWalkFrames(characterIndex, Suit);
+        SpriteFrames? jump = Characters.BuildJumpFrames(characterIndex, Suit);
 
         MergeAnimation(combined, idle, "idle");
         MergeAnimation(combined, walk, "walk");
@@ -245,10 +290,17 @@ public partial class Player : CharacterBody2D
     /// </summary>
     public override void _PhysicsProcess(double delta)
     {
-        // Only the controlling peer moves its own character; remote players are
-        // interpolated by the MultiplayerSynchronizer (pushing here would jitter).
+        // Only the controlling peer applies input and physics; remote players
+        // interpolate snapshots received from their owning peer.
         if (Multiplayer.HasMultiplayerPeer() && !IsMultiplayerAuthority())
+        {
+            if (hasRemotePosition)
+            {
+                float smoothing = 1f - Mathf.Exp(-RemotePositionSmoothingSpeed * (float)delta);
+                Position = Position.Lerp(remoteTargetPosition, smoothing);
+            }
             return;
+        }
 
         float dt = (float)delta;
 
@@ -325,6 +377,20 @@ public partial class Player : CharacterBody2D
             Velocity = new Vector2(Velocity.X, 0f);
 
         UpdateVisuals();
+
+        if (Multiplayer.HasMultiplayerPeer())
+        {
+            Rpc(
+                nameof(RpcApplyNetworkState),
+                Position.X,
+                Position.Y,
+                Velocity.X,
+                Velocity.Y,
+                sprite?.Animation.ToString() ?? "idle",
+                sprite?.Frame ?? 0,
+                sprite?.FlipH ?? false
+            );
+        }
     }
 
     private void UpdateVisuals()

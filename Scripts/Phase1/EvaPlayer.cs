@@ -65,9 +65,6 @@ public partial class EvaPlayer : CharacterBody2D
 	[Export] public float GrabSpinDamping = 8f;
 	[Export] public float ThrusterPuffInterval = 0.08f;
 	[Export] public string SpriteFramesPath = "";
-private static readonly string SuitIdlePath = "res://Sprites/Traje_Protecao/Idle/traje_protecao_idle_right.png";
-	private static readonly string SuitGrabMovePath = "res://Sprites/Traje_Protecao/Walk/traje_protecao_walk_left.png";
-	private const int SuitFrameWidth = 32;
 
 	private Line2D tetherLine;
 	private AnimatedSprite2D sprite;
@@ -771,7 +768,7 @@ public override void _Input(InputEvent @event)
 		return v.LengthSquared() > 1f ? v.Normalized() : v;
 	}
 // -------------------------------------------------------------------------
-	// Sprite / visuals (unchanged from the original)
+	// Sprite / visuals
 	// -------------------------------------------------------------------------
 
 	private void SetupSprite()
@@ -786,13 +783,48 @@ public override void _Input(InputEvent @event)
 			}
 		}
 
+		int characterIndex = GetCharacterIndex();
+		SpriteFrames idle = Characters.BuildIdleFrames(
+			characterIndex,
+			CharacterSuit.Standard,
+			"float");
+		SpriteFrames walk = Characters.BuildWalkFrames(
+			characterIndex,
+			CharacterSuit.Standard,
+			"grab");
+		if (idle == null || walk == null)
+			return;
+
 		var built = new SpriteFrames();
-		AddSlicedAnimation(built, "float", SuitIdlePath);
-		AddSlicedAnimation(built, "grab", SuitGrabMovePath);
-		if (!built.HasAnimation("float"))
-			return; // no suit art found -> keep the placeholder drawing.
+		built.RemoveAnimation("default");
+		CopyAnimation(built, idle, "float");
+		CopyAnimation(built, walk, "grab");
 
 		sprite = MakeSprite(built);
+	}
+
+	private int GetCharacterIndex()
+	{
+		Node handler = GetNodeOrNull<Node>("/root/HighLevelNetworkHandler");
+		if (handler == null)
+			return 0;
+
+		int peerId = int.TryParse(Name, out int namedPeerId)
+			? namedPeerId
+			: Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetUniqueId() : 1;
+		int characterIndex = handler.Call("get_player_character", peerId).AsInt32();
+		return Characters.IsValid(characterIndex) ? characterIndex : 0;
+	}
+
+	private static void CopyAnimation(SpriteFrames target, SpriteFrames source, string animationName)
+	{
+		target.AddAnimation(animationName);
+		target.SetAnimationSpeed(animationName, source.GetAnimationSpeed(animationName));
+		target.SetAnimationLoopMode(animationName, source.GetAnimationLoopMode(animationName));
+
+		int frameCount = source.GetFrameCount(animationName);
+		for (int i = 0; i < frameCount; i++)
+			target.AddFrame(animationName, source.GetFrameTexture(animationName, i));
 	}
 
 	private AnimatedSprite2D MakeSprite(SpriteFrames frames)
@@ -802,30 +834,6 @@ public override void _Input(InputEvent @event)
 		if (frames.HasAnimation("float"))
 			s.Play("float");
 		return s;
-	}
-
-	private void AddSlicedAnimation(SpriteFrames frames, string anim, string texturePath)
-	{
-		if (string.IsNullOrEmpty(texturePath) || !ResourceLoader.Exists(texturePath)) return;
-		var tex = GD.Load<Texture2D>(texturePath);
-		if (tex == null) return;
-
-		int cols = tex.GetWidth() / SuitFrameWidth;
-		int frameHeight = tex.GetHeight();
-		if (cols <= 0) return;
-
-		frames.AddAnimation(anim);
-		frames.SetAnimationLoopMode(anim, SpriteFrames.LoopMode.Linear);
-		frames.SetAnimationSpeed(anim, 6f);
-		for (int i = 0; i < cols; i++)
-		{
-			var atlas = new AtlasTexture
-			{
-				Atlas = tex,
-				Region = new Rect2(i * SuitFrameWidth, 0, SuitFrameWidth, frameHeight)
-			};
-			frames.AddFrame(anim, atlas);
-		}
 	}
 
 	private void UpdateSprite()
