@@ -23,6 +23,9 @@ public partial class VoiceTutorial : Control
     /// <summary>Scene opened once everybody finished (or the host skipped).</summary>
     [Export] public string NextScenePath = "";
 
+    /// <summary>NetSession exit-barrier name for the cutscene that hosts this tutorial.</summary>
+    [Export] public string ExitBarrierName = "";
+
     private Node? _handler;
     private Label? _localState;
     private Label? _progressLabel;
@@ -147,8 +150,15 @@ public partial class VoiceTutorial : Control
             return;
         }
 
+        string exitBarrier = ExitBarrierName;
+        if (string.IsNullOrEmpty(exitBarrier))
+        {
+            string? sceneName = GetTree().CurrentScene?.Name;
+            exitBarrier = ((string.IsNullOrEmpty(sceneName) ? "Cutscene" : sceneName) + "_Exit");
+        }
+
         if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeScene(NextScenePath);
+            SceneTransitions.Instance.ChangeSceneSynchronized(NextScenePath, exitBarrier);
         else
             GetTree().ChangeSceneToFile(NextScenePath);
     }

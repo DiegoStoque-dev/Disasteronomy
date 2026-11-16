@@ -34,3 +34,6 @@ scale = Vector2(0.2, 0.2)
 text = "Jogador"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="." unique_id=2019169952]
+replication_config = SubResource("SceneReplicationConfig_lobby_player")

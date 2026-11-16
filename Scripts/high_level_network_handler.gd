@@ -12,8 +12,14 @@ signal player_kicked(peer_id: int)
 signal match_started
 signal tutorial_progress_changed(ready_count: int, total_count: int)
 signal tutorial_finished
+signal all_ready(barrier_name: String)
+signal peer_joined_scene(peer_id: int)
+signal peer_left(peer_id: int)
+signal session_ended
+signal rejected_after_start
 
 const PORT: int = 7777
+const MAX_PLAYERS: int = 4
 const DISCOVERY_PORT: int = 7778
 const DISCOVERY_ADDRESS: String = "255.255.255.255"
 const ROOM_CODE_LENGTH: int = 6
@@ -32,6 +38,10 @@ var _player_characters: Dictionary = {}
 var _player_ready: Dictionary = {}
 var _tutorial_ready: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
+var participants: Array = []
+var _barriers: Dictionary = {}
+var _session_active := false
+var _match_started := false
 
 func _ready() -> void:
 	_rng.randomize()
@@ -75,13 +85,19 @@ func start_server(room_code: String = "") -> void:
 	var discovery := PacketPeerUDP.new()
 	var error := discovery.bind(DISCOVERY_PORT, "0.0.0.0")
 	if error != OK:
-		push_error("Could not open the discovery port %d: %s" % [DISCOVERY_PORT, error_string(error)])
-		return
+		# LAN discovery is optional: if 7778 is already in use (another local test
+		# instance, or a leftover process), the room still hosts on PORT (7777) and
+		# players join by room code or direct IP - discovery just stays off.
+		push_warning("Discovery port %d unavailable (%s); hosting without LAN discovery." % [DISCOVERY_PORT, error_string(error)])
+		discovery = null
 
 	var new_peer := ENetMultiplayerPeer.new()
-	error = new_peer.create_server(PORT, 4)
+	# create_server's second arg is the max number of CONNECTED CLIENTS, so the
+	# room holds MAX_PLAYERS total: the host plus (MAX_PLAYERS - 1) clients.
+	error = new_peer.create_server(PORT, MAX_PLAYERS - 1)
 	if error != OK:
-		discovery.close()
+		if discovery != null:
+			discovery.close()
 		push_error("Could not start the server on port %d: %s" % [PORT, error_string(error)])
 		return
 
@@ -93,7 +109,12 @@ func start_server(room_code: String = "") -> void:
 	_player_characters.clear()
 	_player_ready.clear()
 	_tutorial_ready.clear()
+	participants.clear()
+	_barriers.clear()
+	_match_started = false
+	_session_active = true
 	_sync_player_nickname.rpc(multiplayer.get_unique_id(), local_nickname)
+	add_participant(multiplayer.get_unique_id())
 	_auto_assign_character(multiplayer.get_unique_id())
 	server_started.emit()
 	room_created.emit(_room_code)
@@ -101,6 +122,14 @@ func start_server(room_code: String = "") -> void:
 func _on_peer_connected(peer_id: int) -> void:
 	if not multiplayer.is_server():
 		return
+
+	if _match_started:
+		# The match already started: reject late joiners with a clear message.
+		_notify_rejected.rpc_id(peer_id)
+		peer.disconnect_peer(peer_id)
+		return
+
+	add_participant(peer_id)
 
 	for existing_peer_id in _player_nicknames:
 		_sync_player_nickname.rpc_id(
@@ -132,7 +161,18 @@ func _on_peer_disconnected(peer_id: int) -> void:
 	if not multiplayer.is_server():
 		return
 
+	remove_participant(peer_id)
+	_remove_peer_from_barriers(peer_id)
 	_sync_player_nickname.rpc(peer_id, "")
+	# A left peer must not keep the tutorial (or any barrier) blocked: drop its
+	# state and re-evaluate so the remaining crew can continue.
+	_tutorial_ready.erase(peer_id)
+	_player_nicknames.erase(peer_id)
+	_player_characters.erase(peer_id)
+	_player_ready.erase(peer_id)
+	if multiplayer.is_server():
+		_emit_tutorial_progress()
+		_check_tutorial_complete()
 	_sync_player_character.rpc(peer_id, -1)
 	_player_ready.erase(peer_id)
 	_broadcast_peer_activity.rpc(peer_id, false)
@@ -330,6 +370,11 @@ func stop_multiplayer() -> void:
 	_player_characters.clear()
 	_player_ready.clear()
 	_tutorial_ready.clear()
+	participants.clear()
+	_barriers.clear()
+	_match_started = false
+	_session_active = false
+	session_ended.emit()
 
 # ---------------------------------------------------------------------------
 # Voice chat tutorial - synchronized with every player in the room.
@@ -463,16 +508,44 @@ func kick_player(peer_id: int) -> void:
 func _notify_kicked(peer_id: int) -> void:
 	player_kicked.emit(peer_id)
 
+func is_solo() -> bool:
+	# Solo = no connected peer. Never use Multiplayer.MultiplayerPeer == null:
+	# in Godot 4 there is always an offline peer, so rely on the peer list and on
+	# the connection status (also avoids the "not active" error while tearing down).
+	if not multiplayer.has_multiplayer_peer():
+		return true
+	var net_peer := multiplayer.multiplayer_peer
+	if net_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return true
+	return multiplayer.get_peers().is_empty()
+
+func _safe_server_state() -> bool:
+	# IsHost: true in solo; in multiplayer check the connection status before
+	# calling IsServer() to avoid errors during shutdown.
+	if not multiplayer.has_multiplayer_peer():
+		return true
+	if multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return true
+	return multiplayer.is_server()
+
 func is_host() -> bool:
-	return peer == null or multiplayer.is_server()
+	return _safe_server_state()
+
+func has_session() -> bool:
+	return _session_active
 
 func start_match() -> void:
-	if peer == null:
-		# Solo: nothing to synchronize, just start.
+	if is_solo():
+		# Solo: nothing to synchronize, just fix the participants list and start.
+		participants = _player_nicknames.keys().duplicate()
+		_match_started = true
 		match_started.emit()
 		return
 	if not multiplayer.is_server():
 		return
+	participants = _player_nicknames.keys().duplicate()
+	_match_started = true
+	_sync_participants.rpc(_player_nicknames.keys())
 	_start_match.rpc()
 
 @rpc("authority", "call_local", "reliable")
@@ -549,3 +622,108 @@ func host_skip_tutorial() -> void:
 @rpc("authority", "call_local", "reliable")
 func _finish_tutorial() -> void:
 	tutorial_finished.emit()
+
+# ---------------------------------------------------------------------------
+# NetSession - explicit participant list, scene barriers and session lifecycle.
+# The host is the only authority: every RPC of decision here is Authority and
+# never trusts a peer id passed as an argument (uses GetRemoteSenderId()).
+# ---------------------------------------------------------------------------
+
+func setup_participants(value: Array) -> void:
+	participants = value.duplicate()
+
+func get_participants() -> Array:
+	return participants.duplicate()
+
+func add_participant(peer_id: int) -> void:
+	if not participants.has(peer_id):
+		participants.append(peer_id)
+
+func remove_participant(peer_id: int) -> void:
+	participants.erase(peer_id)
+
+func mark_ready(barrier_name: String) -> void:
+	# Barrier confirmation entry point (single place). In solo it resolves
+	# immediately; in multiplayer it goes to the host which re-broadcasts.
+	if is_solo():
+		if not _barriers.has(barrier_name):
+			_barriers[barrier_name] = {}
+		_barriers[barrier_name][1] = true
+		all_ready.emit(barrier_name)
+		return
+	if multiplayer.is_server():
+		_register_barrier_ready(barrier_name, multiplayer.get_unique_id())
+	else:
+		_submit_barrier_ready.rpc_id(1, barrier_name)
+
+func _register_barrier_ready(barrier_name: String, peer_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	_sync_barrier_ready.rpc(barrier_name, peer_id)
+	_recheck_barrier(barrier_name)
+
+@rpc("any_peer", "call_remote", "reliable")
+func _submit_barrier_ready(barrier_name: String) -> void:
+	if not multiplayer.is_server():
+		return
+	_register_barrier_ready(barrier_name, multiplayer.get_remote_sender_id())
+
+@rpc("authority", "call_local", "reliable")
+func _sync_barrier_ready(barrier_name: String, peer_id: int) -> void:
+	if not _barriers.has(barrier_name):
+		_barriers[barrier_name] = {}
+	_barriers[barrier_name][peer_id] = true
+	peer_joined_scene.emit(peer_id)
+	if multiplayer.is_server():
+		_recheck_barrier(barrier_name)
+
+func _recheck_barrier(barrier_name: String) -> void:
+	# Host only: when every participant has confirmed, unlock the barrier for all.
+	if not multiplayer.is_server():
+		return
+	if not _barriers.has(barrier_name):
+		return
+	var ready_peers: Array = _barriers[barrier_name].keys()
+	var required: Array = participants.duplicate()
+	if required.is_empty():
+		required = _player_nicknames.keys()
+	for pid in required:
+		if not ready_peers.has(pid):
+			return
+	_all_ready.rpc(barrier_name)
+
+@rpc("authority", "call_local", "reliable")
+func _all_ready(barrier_name: String) -> void:
+	all_ready.emit(barrier_name)
+
+func is_ready(barrier_name: String, peer_id: int) -> bool:
+	return _barriers.has(barrier_name) and _barriers[barrier_name].has(peer_id)
+
+func clear_barriers() -> void:
+	_barriers.clear()
+
+func _mark_peer_left(peer_id: int) -> void:
+	peer_left.emit(peer_id)
+
+func _remove_peer_from_barriers(peer_id: int) -> void:
+	_mark_peer_left(peer_id)
+	for barrier_name in _barriers.keys().duplicate():
+		if _barriers[barrier_name].has(peer_id):
+			_barriers[barrier_name].erase(peer_id)
+			if multiplayer.is_server():
+				_recheck_barrier(barrier_name)
+	for barrier_name in _barriers.keys().duplicate():
+		if _barriers[barrier_name].is_empty():
+			_barriers.erase(barrier_name)
+
+@rpc("authority", "call_local", "reliable")
+func _sync_participants(value: Array) -> void:
+	participants = value.duplicate()
+
+@rpc("authority", "call_remote", "reliable")
+func _notify_rejected() -> void:
+	rejected_after_start.emit()
+
+func end_session() -> void:
+	# Single session reset entry point (back to menu, ServerDisconnected, kick).
+	stop_multiplayer()

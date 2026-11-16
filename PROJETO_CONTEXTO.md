@@ -15,7 +15,7 @@ Documento de referência: o que existe em cada arquivo e para que serve, para an
 Intro.tscn (vídeo logo) ─▶ MainMenu.tscn ─▶ MatchSetup.tscn (lobby/room)
   ▶ Cutscene1 (tutorial voz) ▶ Cutscene2 (tutorial TAB) ▶ Cutscene3
     ▶ Lobby/lobby.tscn (interior da nave; host ativa Terminal)
-      ▶ Phase1/Phase1.tscn (EVA / Fase 1) ─▶ Fase 2/3 (planejadas)
+      ▶ Phase1/Phase1.tscn (EVA / Fase 1) ─▶ Phase2/Phase2.tscn (implementada; volta ao lobby) ─▶ Fase 3 (planejada)
 ```
 
 ### Autoloads (project.godot)
@@ -53,7 +53,7 @@ Intro.tscn (vídeo logo) ─▶ MainMenu.tscn ─▶ MatchSetup.tscn (lobby/room
 
 | Arquivo | Função |
 |---|---|
-| `Global.cs` | Singleton de configuração: resolução/fullscreen, volume, remap de input (salvo em `user://settings.cfg`), save da posição do jogador (`user://disasteronomy_save.dat`), sinal/estado do objetivo atual e **progresso da Fase 1 em memória** (`Level1Completed`/`Level1Last*`, resetado por `ResetProgress()` no início de uma nova partida). |
+| `Global.cs` | Singleton de configuração: resolução/fullscreen, volume, remap de input (salvo em `user://settings.cfg`), save da posição do jogador (`user://disasteronomy_save.dat`), sinal/estado do objetivo atual e **progresso das Fases 1 e 2 em memória** (`Level1Completed`/`Level1Last*`, `Level2Completed`, resetados por `ResetProgress()` no início de uma nova partida). |
 | `Characters.cs` | Catálogo dos 4 personagens (Ana=vermelho, Lucy=roxo, Morgana=azul, Roger=verde) + caminhos das folhas de sprite e geração de `SpriteFrames` (idle/walk/jump). |
 | `MusicManager.cs` | Autoload: música do menu (`Loops - Lonely Nightmare/...loop1.ogg`) tocando em loop com fade. |
 | `Sfx.cs` | Helper estático `Sfx.Play(node, "nome")` — toca `res://Music/sfx/<nome>.{ogg,wav,mp3}` se existir; silencioso se faltar. |
@@ -108,6 +108,15 @@ Intro.tscn (vídeo logo) ─▶ MainMenu.tscn ─▶ MatchSetup.tscn (lobby/room
 | `ShipHud.cs` | HUD do lobby: painel de chat/log (sistema, diálogos, jogadores), prompt de interação do Terminal, contagem regressiva de 5 s e fade preto antes da Fase 1. |
 | `ShipManager.cs` | Manager do lobby: lê o mapa/zones (Spawn e Terminal), spawna os jogadores (o host decide e transmite via `RpcSpawnPlayer`). O Terminal é host-only: 5 s de contagem → fade → Fase 1. Depois da Fase 1, mostra o relatório (`MissionSummary`, título "LEVEL 1 REPORT") e o Continue vai para a Fase 2, ou loga "LEVEL 2 - NOT AVAILABLE YET" se a cena não existir. |
 
+### Scripts — Fase 2 (`Scripts/Phase2/`)
+
+| Arquivo | Função |
+|---|---|
+| `Phase2Manager.cs` | Manager da Fase 2 (DSH, plataforma lateral): constrói o mapa a partir da **arte real em `Sprites/map2/`** (rooms UtilityTunnel2/ISSLab/UtilityTunnel1/BigUtilityTunnel/MPLM, escala 2x igual ao lobby, `RoomOverlap=12`, chão/ceilings/walls por `RectangleShape2D` em um único `StaticBody2D`), spawna os jogadores igual ao lobby, HUD de objetivo/sanidade. Tarefas: **Restaurar sistema** (3 válvulas ECLSS) e **Regular oxigênio** (segurar E no módulo central por 6 s, com barra de progresso). Fumaça em ramp e criaturas/vultos quando a sanidade cai. Falha por sanidade → tela "MISSION FAILED". |
+| `Interactable.cs` | Área de interação (valve/central) com retângulo colorido; o manager detecta o overlap e faz a ação. |
+| `Hazard.cs` | Choque elétrico animado (`Sprites/map2/ElectricBarrier_sheet.png`, 160x16, 5 frames de 32x16 a 100 ms): frames 1-4 ligados, frame 0 desligado (`IsOn`); drena sanidade com knockback e flash vermelho. |
+| `Ghost.cs` | Vulto translúcido local (sem colisão): fade in, deriva até o centro da tela, fade out. Usa `Sprites/Monsters/skuba.png` quando disponível. |
+
 ## 7. Cenas (`Scenes/`)
 
 | Cena | Função |
@@ -128,6 +137,7 @@ Intro.tscn (vídeo logo) ─▶ MainMenu.tscn ─▶ MatchSetup.tscn (lobby/room
 | `Phase1/Phase1_cline.tscn` | Backup da Fase 1 (fora do fluxo). |
 | `Phase1/Phase1_old.tscn` | Versão antiga da Fase 1 (mesmo manager; fora do fluxo). |
 | `Phase1/EvaPlayer.tscn` | Variante legada do jogador (node custom `EvaPlayer`). |
+| `Phase2/Phase2.tscn` | **Fase 2 (implementada):** cena montada em código pelo `Phase2Manager` (raiz `Node2D` só com o script; salas com a arte de `Sprites/map2/`, HUD e jogadores criados no `_Ready`). |
 | `UI/IntroSkipButton.tscn`, `UI/ObjectiveHud.tscn` | Componentes de UI reutilizáveis. |
 
 ### Fora do mapa (`Scripts/Phase1/*.tscn`)
@@ -162,17 +172,20 @@ Intro.tscn (vídeo logo) ─▶ MainMenu.tscn ─▶ MatchSetup.tscn (lobby/room
 - **Rede:** autoridade no host (RPCs `AnyPeer`/`Authority`); solo funciona sem peer.
 - **`README.md` menciona `SCOPO.md`**, que ainda não existe no repositório.
 - **Build C#:** `dotnet build` na raiz é a forma mais rápida de validar sem abrir o editor.
+- **Mapa da Fase 2:** o `Phase2Manager` monta as salas `UtilityTunnel2 -> ISSLab -> UtilityTunnel1 -> BigUtilityTunnel -> MPLM` (todas em `Sprites/map2/`, escala 2x = lobby, `RoomOverlap = 12` px de arte, túneis 31 px mais baixos). Chão compartilhado em world y=164; colisão única: chão/ceilings/walls por `RectangleShape2D`. Caixotes recortados de `barriers.png` (`AtlasTexture`); choques usam `ElectricBarrier_sheet.png`.
+- **Teclas de debug:** F6 (imprime offsets das salas/objetos + linhas de chão/teto), F7 (spawna um vulto), F8 (sanidade 20), F9 (teleporte) e F10 (válvulas) funcionam **só em build de debug** (`OS.IsDebugBuild()`); o overlay F2 da Fase 1 permanece sempre disponível.
 
 ---
 
-## 10. Fase 2 (planejada)
+## 10. Fase 2 (implementada - v1)
 
-A Fase 2 começa logo após a Fase 1, dentro do DSH (Deep Space Habitat). A comunicação com o
-CAPCOM cai quase que instantaneamente e uma fumaça leve se espalha pela nave; ao vestir os
-trajes de proteção, a fumaça já cobre metade da visão. A nave vira um labirinto: o grupo se
-divide para encontrar as válvulas do ECLSS e o módulo central, restaurando o sistema e
-regulando o oxigênio. Cuidado com caixas e choques — tocar em um choque drena a sanidade;
-com sanidade baixa, criaturas/vultos começam a surgir.
+A Fase 2 acontece logo após a Fase 1, dentro do DSH (Deep Space Habitat), usando a arte das salas em `Sprites/map2/`. A comunicação com o
+CAPCOM cai e uma fumaça leve se espalha pela nave, cobrindo metade da visão em ~90 s. A nave é
+um labirinto: o grupo se divide em duas tarefas — **Restaurar o sistema** (as 3 válvulas do
+ECLSS) e depois **Regular o oxigênio** (segurar E no módulo central). Caixotes ajudam na
+plataforma; choques elétricos drenam a sanidade. Com sanidade baixa (<40), vultos translúcidos
+surgem nas bordas da tela; abaixo de 20, um leve tom avermelhado cobre a tela. Perder toda a
+sanidade falha a missão.
 
 
 

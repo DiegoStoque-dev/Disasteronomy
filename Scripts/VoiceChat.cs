@@ -16,10 +16,15 @@ public partial class VoiceChat : Node
 
 	private Dictionary<long, AudioStreamPlayer> remotePlayers = new();
 	private Dictionary<long, AudioStreamGeneratorPlayback> remotePlaybacks = new();
+	private Node? _netHandler;
 
 	public override void _Ready()
 	{
 		GD.Print("VOICE CHAT STARTED!");
+
+		_netHandler = GetNodeOrNull("/root/HighLevelNetworkHandler");
+		if (_netHandler != null)
+			_netHandler.Connect("peer_left", Callable.From<long>(OnRemotePeerLeft));
 
 		// The indicator lives in the lobby panel, not under this node, so look it up
 		// from the scene root as well (FindChild only searches this node's own subtree).
@@ -127,7 +132,7 @@ public partial class VoiceChat : Node
 		if (!microphoneEnabled || capture == null)
 			return;
 
-		if (Multiplayer.MultiplayerPeer == null)
+		if (_netHandler == null || _netHandler.Call("is_solo").AsBool())
 			return;
 
 		// Grab the captured audio frames.
@@ -301,5 +306,32 @@ if (debugTimer >= 1.0)
 		remotePlaybacks[peerId] = playback;
 
 		return playback;
+	}
+
+	public override void _ExitTree()
+	{
+		// Stop capture and free remote playback nodes when leaving the scene.
+		if (microphonePlayer != null)
+			microphonePlayer.Stop();
+
+		foreach (var kv in remotePlayers)
+		{
+			if (IsInstanceValid(kv.Value))
+				kv.Value.QueueFree();
+		}
+		remotePlayers.Clear();
+		remotePlaybacks.Clear();
+	}
+
+	private void OnRemotePeerLeft(long peerId)
+	{
+		// Free this peer's remote playback so resources are released on disconnect.
+		if (remotePlayers.TryGetValue(peerId, out AudioStreamPlayer? player) && player != null)
+		{
+			if (IsInstanceValid(player))
+				player.QueueFree();
+			remotePlayers.Remove(peerId);
+		}
+		remotePlaybacks.Remove(peerId);
 	}
 }

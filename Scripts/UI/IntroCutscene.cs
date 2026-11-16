@@ -35,6 +35,9 @@ public partial class IntroCutscene : Control
     /// <summary>Optional objectives (TAB) tutorial (shown when the video ends).</summary>
     [Export] public NodePath TabTutorialPath = new("");
 
+    /// <summary>NetSession exit-barrier name for this scene. Empty = derived from the scene node name.</summary>
+    [Export] public string ExitBarrierName = "";
+
     private VideoStreamPlayer? _video;
     private VoiceTutorial? _voiceTutorial;
     private TabTutorial? _tabTutorial;
@@ -193,8 +196,15 @@ public partial class IntroCutscene : Control
 
         GD.Print($"[IntroCutscene] Going to '{NextScenePath}'.");
 
+        string exitBarrier = ExitBarrierName;
+        if (string.IsNullOrEmpty(exitBarrier))
+        {
+            string? sceneName = GetTree().CurrentScene?.Name;
+            exitBarrier = ((string.IsNullOrEmpty(sceneName) ? "Cutscene" : sceneName) + "_Exit");
+        }
+
         if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeScene(NextScenePath);
+            SceneTransitions.Instance.ChangeSceneSynchronized(NextScenePath, exitBarrier);
         else
             GetTree().ChangeSceneToFile(NextScenePath);
     }
