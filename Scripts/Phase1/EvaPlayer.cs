@@ -784,13 +784,13 @@ public override void _Input(InputEvent @event)
 		}
 
 		int characterIndex = GetCharacterIndex();
-		var idle = Characters.BuildIdleFrames(
+		SpriteFrames idle = Characters.BuildIdleFrames(
 			characterIndex,
-			Characters.Suit.Standard,
+			CharacterSuit.Standard,
 			"float");
-		var walk = Characters.BuildWalkFrames(
+		SpriteFrames walk = Characters.BuildWalkFrames(
 			characterIndex,
-			Characters.Suit.Standard,
+			CharacterSuit.Standard,
 			"grab");
 		if (idle == null || walk == null)
 			return;

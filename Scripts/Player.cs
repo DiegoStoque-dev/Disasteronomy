@@ -29,6 +29,8 @@ using Godot;
 /// </summary>
 public partial class Player : CharacterBody2D
 {
+    [Export] public CharacterSuit Suit = CharacterSuit.Protection;
+
     // --- Sazsazan platformer movement (adapted microgravity) ---
     [Export] public float MoveSpeed = 150f;
     /// <summary>Ground horizontal acceleration (responsive start, reduced).</summary>
@@ -242,9 +244,9 @@ public partial class Player : CharacterBody2D
         SpriteFrames combined = new();
         combined.RemoveAnimation("default");
 
-        SpriteFrames? idle = Characters.BuildIdleFrames(characterIndex, suit);
-        SpriteFrames? walk = Characters.BuildWalkFrames(characterIndex, suit);
-        SpriteFrames? jump = Characters.BuildJumpFrames(characterIndex, suit);
+        SpriteFrames? idle = Characters.BuildIdleFrames(characterIndex);
+        SpriteFrames? walk = Characters.BuildWalkFrames(characterIndex);
+        SpriteFrames? jump = Characters.BuildJumpFrames(characterIndex);
 
         MergeAnimation(combined, idle, "idle");
         MergeAnimation(combined, walk, "walk");

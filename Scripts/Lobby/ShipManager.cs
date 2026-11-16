@@ -42,6 +42,7 @@ public partial class ShipManager : Node2D
     private const float FadeDuration = 1.5f;      // slow fade-to-black leaving the ship (Level 1 fades in by itself).
     private const float FadeHold = 0.3f;          // brief hold at black before loading Level 1.
     private const float MinSpawnSeparation = 44f;
+    private const float LobbyStateRetryInterval = 1f;
 
     private StaticBody2D? world;      // map root: polygons + the two Area2D zones
     private Area2D? spawnZone;        // "StaticBody2D/Spawn"
@@ -57,9 +58,12 @@ public partial class ShipManager : Node2D
     private bool terminalBusy;
     private bool transitioning;
     private float countdownRemaining;
+    private float lobbyStateRetryRemaining;
     private string localNickname = "";
+    private bool lobbyStateReceived;
 
     private readonly List<Vector2> takenSpawnPositions = new();
+    private readonly Dictionary<int, Vector2> spawnPositionsByPeer = new();
 
     private const string HandlerPath = "/root/HighLevelNetworkHandler";
     private const string LobbyLoadedBarrier = "Lobby_Loaded";
@@ -96,6 +100,16 @@ public partial class ShipManager : Node2D
     public override void _Process(double delta)
     {
         float dt = (float)delta;
+
+        if (Multiplayer.HasMultiplayerPeer() && !IsHost && !lobbyStateReceived)
+        {
+            lobbyStateRetryRemaining -= dt;
+            if (lobbyStateRetryRemaining <= 0f)
+            {
+                RequestLobbyState();
+                lobbyStateRetryRemaining = LobbyStateRetryInterval;
+            }
+        }
 
         if (localPlayer == null)
         {
@@ -239,8 +253,10 @@ public partial class ShipManager : Node2D
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// Configures the scene's MultiplayerSpawner so host-created players are
-    /// replicated consistently to peers that have crossed the lobby barrier.
+    /// Players are created with a deterministic RPC broadcast from the host (see
+    /// SpawnPlayerForPeer / RpcSpawnPlayer) instead of a MultiplayerSpawner, so
+    /// every peer reliably builds the same players in its own tree — a client
+    /// never ends up without its own character (and camera) or without remote ones.
     /// </summary>
     private void ConfigureSpawner()
     {
@@ -261,7 +277,7 @@ public partial class ShipManager : Node2D
             AddChild(playersRoot);
         }
 
-        _spawner.SpawnPath = new NodePath("../Players");
+        _spawner.SpawnPath = new NodePath("Players");
         _spawner.Spawned += OnPlayerSpawned;
     }
 
@@ -309,8 +325,26 @@ public partial class ShipManager : Node2D
 
     private void SpawnPlayerForPeer(long peerId)
     {
-        if (!IsHost || playersRoot == null)
-            return;
+        // Picks the random (central, non-overlapping) position on the host and
+        // broadcasts the spawn so every peer creates the player at the same spot.
+        Vector2 position = PickSpawnPosition();
+        Rpc(nameof(RpcSpawnPlayer), (int)peerId, position.X, position.Y);
+    }
+
+    /// <summary>
+    /// Runs on every peer: deterministically instantiates the player for a peer
+    /// id under "Players", names it (peer id -> authority), clamps it inside the
+    /// ship and, for the local peer, enables the following camera. This guarantees
+    /// the client both has its own character AND sees the replicated remote ones.
+    /// </summary>
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+    private void RpcSpawnPlayer(int peerId, float x, float y)
+    {
+        if (playersRoot == null)
+        {
+            playersRoot = new Node2D { Name = "Players", ZIndex = 1 };
+            AddChild(playersRoot);
+        }
 
         if (playersRoot.GetNodeOrNull(peerId.ToString()) != null)
             return;
@@ -324,24 +358,13 @@ public partial class ShipManager : Node2D
 
         var player = scene.Instantiate<Player>();
         player.Name = peerId.ToString();
-        player.GlobalPosition = ClampToWorld(PickSpawnPosition());
-        player.SetMultiplayerAuthority((int)peerId);
+        player.GlobalPosition = ClampToWorld(new Vector2(x, y));
         playersRoot.AddChild(player);
 
-        if (peerId == LocalPeerId)
-        {
-            localPlayer = player;
-            player.SetCameraLimits(worldBounds);
-        }
-
-        GD.Print($"[Lobby] Spawned player {peerId} at {player.GlobalPosition}");
-    }
-
-    private void OnPlayerSpawned(Node node)
-    {
-        if (node is not Player player)
-            return;
-
+        // Defensive: the AnimatedSprite2D may come from the scene with an editor
+        // placeholder animation that does not exist after the character frames are
+        // rebuilt; force it onto the real idle animation to avoid any set_animation
+        // error on secondary/remote instantiations.
         if (player.GetNodeOrNull<AnimatedSprite2D>("AnimatedSprite2D") is { } anim2D &&
             anim2D.SpriteFrames != null &&
             anim2D.SpriteFrames.HasAnimation("idle"))
@@ -350,7 +373,7 @@ public partial class ShipManager : Node2D
             anim2D.Play();
         }
 
-        if (player.Name.ToString() == LocalPeerId.ToString())
+        if (node.Name.ToString() == LocalPeerId.ToString())
         {
             localPlayer = player;
             player.SetCameraLimits(worldBounds);
@@ -445,13 +468,10 @@ public partial class ShipManager : Node2D
             result.Add((int)LocalPeerId);
             return result;
         }
-        foreach (Variant id in _netHandler.Call("get_participants").AsGodotArray())
-            result.Add(checked((int)id.AsInt64()));
-        if (result.Count == 0)
-        {
-            foreach (Variant id in _netHandler.Call("get_player_ids").AsGodotArray())
-                result.Add(checked((int)id.AsInt64()));
-        }
+        int[] ids = _netHandler.Call("get_participants").AsInt32Array();
+        if (ids.Length == 0)
+            ids = _netHandler.Call("get_player_ids").AsInt32Array();
+        result.AddRange(ids);
         if (!result.Contains((int)LocalPeerId))
             result.Add((int)LocalPeerId);
         return result;
@@ -571,8 +591,8 @@ public partial class ShipManager : Node2D
         if (!string.IsNullOrWhiteSpace(nickname))
             RpcSystem($"{nickname} saiu da partida.");
 
-        DespawnPlayer(peerId);
-        UpdatePlayerVisibility();
+        // Remove the player replica on every peer, not just the host.
+        Rpc(nameof(RpcRemovePlayer), (int)peerId);
     }
 
     private void DespawnPlayer(long peerId)
