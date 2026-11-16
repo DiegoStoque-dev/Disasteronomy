@@ -25,8 +25,8 @@ using Godot;
 ///     manager from the LineEdit focus): typing A/D/Space only enters text and
 ///     the character never moves until the focus is released.
 ///
-/// Sprites come from the Characters catalog (Sprites/Traje_Protecao/...), so each
-/// character shows its own suit: idle/walk/jump, flipped by horizontal velocity.
+/// Sprites come from the Characters catalog. The Standard suit is used by default;
+/// Phase2Manager explicitly selects the Protection suit for Level 2.
 /// </summary>
 public partial class Player : CharacterBody2D
 {

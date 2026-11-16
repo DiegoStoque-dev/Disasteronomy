@@ -42,6 +42,7 @@ public partial class ShipManager : Node2D
     private const float FadeDuration = 1.5f;      // slow fade-to-black leaving the ship (Level 1 fades in by itself).
     private const float FadeHold = 0.3f;          // brief hold at black before loading Level 1.
     private const float MinSpawnSeparation = 44f;
+    private const float PlayerSnapshotRetryInterval = 0.75f;
 
     private StaticBody2D? world;      // map root: polygons + the two Area2D zones
     private Area2D? spawnZone;        // "StaticBody2D/Spawn"
@@ -57,6 +58,7 @@ public partial class ShipManager : Node2D
     private bool terminalBusy;
     private bool transitioning;
     private float countdownRemaining;
+    private float playerSnapshotRetryRemaining;
     private string localNickname = "";
 
     private readonly List<Vector2> takenSpawnPositions = new();
@@ -74,10 +76,9 @@ public partial class ShipManager : Node2D
         SetupMissionSummary();
         SetupObjectives();
         ConfigureSpawner();
-        SpawnPlayers();
-
         Multiplayer.PeerConnected += OnPeerConnected;
         Multiplayer.PeerDisconnected += OnPeerDisconnected;
+        SpawnPlayers();
 
         LogSystem("Você está a bordo da MPLM. Siga até o Terminal quando a equipe estiver pronta.");
         PlayIntroDialogue();
@@ -92,6 +93,13 @@ public partial class ShipManager : Node2D
             FindLocalPlayer();
             if (localPlayer != null)
                 localPlayer.SetCameraLimits(worldBounds);
+        }
+
+        if (Multiplayer.HasMultiplayerPeer() && !IsHost && localPlayer == null)
+        {
+            playerSnapshotRetryRemaining -= dt;
+            if (playerSnapshotRetryRemaining <= 0f)
+                RequestPlayerSnapshot();
         }
 
         // Sync the chat focus with the player input gate: while the LineEdit has
@@ -271,7 +279,17 @@ public partial class ShipManager : Node2D
         takenSpawnPositions.Clear();
 
         if (!IsHost)
+        {
+            RequestPlayerSnapshot();
             return;
+        }
+
+        if (!Multiplayer.HasMultiplayerPeer())
+        {
+            Vector2 position = PickSpawnPosition();
+            RpcSpawnPlayer((int)LocalPeerId, position.X, position.Y);
+            return;
+        }
 
         // Broadcast every player (host + peers) once: each peer then deterministically
         // builds its own local player and the replicas in its own tree, so the
@@ -290,13 +308,60 @@ public partial class ShipManager : Node2D
         Rpc(nameof(RpcSpawnPlayer), (int)peerId, position.X, position.Y);
     }
 
+    private void RequestPlayerSnapshot()
+    {
+        if (!Multiplayer.HasMultiplayerPeer() || IsHost)
+            return;
+
+        playerSnapshotRetryRemaining = PlayerSnapshotRetryInterval;
+        RpcId(1, nameof(RpcRequestPlayerSnapshot));
+    }
+
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
+    private void RpcRequestPlayerSnapshot()
+    {
+        if (!IsHost || playersRoot == null)
+            return;
+
+        long senderId = Multiplayer.GetRemoteSenderId();
+        if (senderId <= 1 || senderId > int.MaxValue)
+            return;
+
+        int requesterId = (int)senderId;
+        bool isConnectedPeer = false;
+        foreach (int peerId in Multiplayer.GetPeers())
+        {
+            if (peerId == requesterId)
+            {
+                isConnectedPeer = true;
+                break;
+            }
+        }
+
+        if (!isConnectedPeer)
+            return;
+
+        foreach (Node child in playersRoot.GetChildren())
+        {
+            if (child is not Player player || !int.TryParse(player.Name, out int playerId))
+                continue;
+
+            RpcId(
+                requesterId,
+                nameof(RpcSpawnPlayer),
+                playerId,
+                player.GlobalPosition.X,
+                player.GlobalPosition.Y);
+        }
+    }
+
     /// <summary>
     /// Runs on every peer: deterministically instantiates the player for a peer
     /// id under "Players", names it (peer id -> authority), clamps it inside the
     /// ship and, for the local peer, enables the following camera. This guarantees
     /// the client both has its own character AND sees the replicated remote ones.
     /// </summary>
-    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
     private void RpcSpawnPlayer(int peerId, float x, float y)
     {
         if (playersRoot == null)
@@ -437,7 +502,7 @@ public partial class ShipManager : Node2D
         Rpc(nameof(RpcRemovePlayer), (int)peerId);
     }
 
-    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
     private void RpcRemovePlayer(int peerId)
     {
         Node? node = playersRoot?.GetNodeOrNull<Player>(peerId.ToString());

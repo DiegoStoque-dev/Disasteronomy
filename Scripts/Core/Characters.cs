@@ -21,9 +21,11 @@ public static class Characters
     /// <summary>Suit variant used to build the sprite frames.</summary>
     public enum Suit { Standard, Protection }
 
-    /// <summary>Frame size of every character sheet (8 frames per row).</summary>
+    /// <summary>Width in pixels of one character animation frame.</summary>
     public const int FrameWidth = 32;
+    /// <summary>Height of walk animation frames.</summary>
     public const int FrameHeight = 34;
+    /// <summary>Frame count in the idle animation sheets.</summary>
     public const int FrameCount = 8;
     public const float IdleFps = 6f;
 
@@ -37,7 +39,7 @@ public static class Characters
         new Color(0.25f, 0.80f, 0.35f), // Roger  - verde
     };
 
-    /// <summary>Idle sheets live under Sprites/Traje_Protecao/, one folder per character.</summary>
+    /// <summary>Idle sheets for the protection suit, one folder per character.</summary>
     private static readonly string[] IdleSheetPaths =
     {
         "res://Sprites/Traje_Protecao/Traje_Protecao_Ana/Idle/Ana_Idle.png",
@@ -121,19 +123,27 @@ public static class Characters
     }
 
     /// <summary>
-    /// Builds the "idle" SpriteFrames for a character. Defaults to the Standard suit;
-    /// characters without a complete Standard set fall back to Protection everywhere.
+    /// Builds the "idle" SpriteFrames for a character using the requested suit.
     /// </summary>
-    public static SpriteFrames? BuildIdleFrames(int characterIndex, Suit suit = Suit.Standard)
-        => BuildAnimationFrames(characterIndex, suit, IdleFps, "idle", IdleStandardPaths, IdleSheetPaths);
+    public static SpriteFrames? BuildIdleFrames(
+        int characterIndex,
+        Suit suit = Suit.Standard,
+        string animationName = "idle")
+        => BuildAnimationFrames(characterIndex, suit, IdleFps, animationName, IdleStandardPaths, IdleSheetPaths);
 
-    /// <summary>"walk" frames for a character (8 frames per row, 32 wide each).</summary>
-    public static SpriteFrames? BuildWalkFrames(int characterIndex, Suit suit = Suit.Standard)
-        => BuildAnimationFrames(characterIndex, suit, 8f, "walk", WalkStandardPaths, WalkSheetPaths);
+    /// <summary>"walk" frames for a character.</summary>
+    public static SpriteFrames? BuildWalkFrames(
+        int characterIndex,
+        Suit suit = Suit.Standard,
+        string animationName = "walk")
+        => BuildAnimationFrames(characterIndex, suit, 8f, animationName, WalkStandardPaths, WalkSheetPaths);
 
     /// <summary>"jump" frames for a character (used for the upward/vertical impulse).</summary>
-    public static SpriteFrames? BuildJumpFrames(int characterIndex, Suit suit = Suit.Standard)
-        => BuildAnimationFrames(characterIndex, suit, 8f, "jump", JumpStandardPaths, JumpSheetPaths);
+    public static SpriteFrames? BuildJumpFrames(
+        int characterIndex,
+        Suit suit = Suit.Standard,
+        string animationName = "jump")
+        => BuildAnimationFrames(characterIndex, suit, 8f, animationName, JumpStandardPaths, JumpSheetPaths);
 
     private static SpriteFrames? BuildAnimationFrames(
         int characterIndex, Suit suit, float fps, string animation,
@@ -142,9 +152,13 @@ public static class Characters
         if (!IsValid(characterIndex))
             return null;
 
-        // Standard is the default; fall back to Protection when the character's
-        // Standard set is incomplete so nobody shows a mixed/half-empty suit.
-        bool useStandard = suit == Suit.Standard && HasStandardSuit(characterIndex);
+        bool useStandard = suit == Suit.Standard;
+        if (useStandard && !HasStandardSuit(characterIndex))
+        {
+            GD.PushError($"Characters: Standard suit assets are incomplete for {GetName(characterIndex)}.");
+            return null;
+        }
+
         string path = useStandard ? standardPaths[characterIndex] : protectionPaths[characterIndex];
 
         Texture2D? tex = GD.Load<Texture2D>(path);

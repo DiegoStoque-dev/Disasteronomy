@@ -51,9 +51,10 @@ on the **3rd** extreme the rope **breaks** and the player switches to the **shor
 phase (resetting the extreme counter and rope state). All of this is tunable on `EvaPlayer`
 (`max_extremes_before_break`, `tether_max_length`, `arm_reach`, ...).
 
-The astronaut uses the built-in **space-suit sprites** (`Sprites/Traje_Protecao`), built into a
-`SpriteFrames` at runtime (`float` = Idle, `grab` = Walk). You can override it by setting
-`SpriteFramesPath` to your own `.tres`/sprite resource.
+The lobby and Phase 1 use the character-specific default sprites from `Sprites/Traje_Padrao`.
+Phase 2 uses the protection sprites from `Sprites/Traje_Protecao`. The astronaut animations
+(`float` = Idle, `grab` = Walk) are built into a `SpriteFrames` at runtime. You can override
+the Phase 1 sprites by setting `SpriteFramesPath` to your own `.tres`/sprite resource.
 
 ## 📁 Project structure
 
