@@ -96,7 +96,7 @@ public partial class Phase1Manager : Node2D
 	// --- NetSession integration (host-authoritative, explicit participants) ---
 	private const string HandlerPath = "/root/HighLevelNetworkHandler";
 	private const string Phase1LoadedBarrier = "Phase1_Loaded";
-	private const string EvaPlayerScenePath = "res://Scenes/Phase1/EvaPlayer.tscn";
+	private const string EvaPlayerScenePath = "res://Scripts/Phase1/EvaPlayer.tscn";
 	private const string MainMenuScenePath = "res://Scenes/MainMenu.tscn";
 
 	private Node _netHandler;
@@ -520,14 +520,8 @@ private void BuildGrips()
 
 	private void ConfigureSpawner()
 	{
-		spawner = GetNodeOrNull<MultiplayerSpawner>("MultiplayerSpawner");
-		if (spawner == null)
-		{
-			spawner = new MultiplayerSpawner { Name = "MultiplayerSpawner" };
-			AddChild(spawner);
-			spawner.AddSpawnableScene("res://Scenes/Phase1/EvaPlayer.tscn");
-		}
-
+		// Keep every player in the same "Players" container so the spawn path always
+		// points at a node that exists (avoids process_simplify_path null errors).
 		playersRoot = GetNodeOrNull<Node2D>("Players");
 		if (playersRoot == null)
 		{
@@ -535,7 +529,18 @@ private void BuildGrips()
 			AddChild(playersRoot);
 		}
 
+		spawner = GetNodeOrNull<MultiplayerSpawner>("MultiplayerSpawner");
+		if (spawner == null)
+		{
+			spawner = new MultiplayerSpawner { Name = "MultiplayerSpawner" };
+			AddChild(spawner);
+		}
+
+		// Set the spawn path BEFORE registering the spawnable scene (the scene cache
+		// resolves the path while registering), and reuse the exact EvaPlayer scene the
+		// Phase1.tscn bakes so host and every client instantiate the same node type.
 		spawner.SpawnPath = new NodePath("Players");
+		spawner.AddSpawnableScene(EvaPlayerScenePath);
 		spawner.Spawned += OnPlayerSpawned;
 	}
 

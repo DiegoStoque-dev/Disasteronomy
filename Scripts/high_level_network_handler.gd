@@ -19,6 +19,7 @@ signal session_ended
 signal rejected_after_start
 
 const PORT: int = 7777
+const MAX_PLAYERS: int = 4
 const DISCOVERY_PORT: int = 7778
 const DISCOVERY_ADDRESS: String = "255.255.255.255"
 const ROOM_CODE_LENGTH: int = 6
@@ -88,7 +89,9 @@ func start_server(room_code: String = "") -> void:
 		return
 
 	var new_peer := ENetMultiplayerPeer.new()
-	error = new_peer.create_server(PORT, 4)
+	# create_server's second arg is the max number of CONNECTED CLIENTS, so the
+	# room holds MAX_PLAYERS total: the host plus (MAX_PLAYERS - 1) clients.
+	error = new_peer.create_server(PORT, MAX_PLAYERS - 1)
 	if error != OK:
 		discovery.close()
 		push_error("Could not start the server on port %d: %s" % [PORT, error_string(error)])
