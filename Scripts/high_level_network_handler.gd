@@ -85,15 +85,19 @@ func start_server(room_code: String = "") -> void:
 	var discovery := PacketPeerUDP.new()
 	var error := discovery.bind(DISCOVERY_PORT, "0.0.0.0")
 	if error != OK:
-		push_error("Could not open the discovery port %d: %s" % [DISCOVERY_PORT, error_string(error)])
-		return
+		# LAN discovery is optional: if 7778 is already in use (another local test
+		# instance, or a leftover process), the room still hosts on PORT (7777) and
+		# players join by room code or direct IP - discovery just stays off.
+		push_warning("Discovery port %d unavailable (%s); hosting without LAN discovery." % [DISCOVERY_PORT, error_string(error)])
+		discovery = null
 
 	var new_peer := ENetMultiplayerPeer.new()
 	# create_server's second arg is the max number of CONNECTED CLIENTS, so the
 	# room holds MAX_PLAYERS total: the host plus (MAX_PLAYERS - 1) clients.
 	error = new_peer.create_server(PORT, MAX_PLAYERS - 1)
 	if error != OK:
-		discovery.close()
+		if discovery != null:
+			discovery.close()
 		push_error("Could not start the server on port %d: %s" % [PORT, error_string(error)])
 		return
 
