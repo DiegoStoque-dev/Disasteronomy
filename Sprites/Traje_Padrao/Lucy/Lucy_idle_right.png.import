@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dep8lj0qboyeh"
-path="res://.godot/imported/Lucy_idle_rightt.png-4ee62a0156ac67af52e7c815ae2f9b82.ctex"
+uid="uid://brpxpstvcs45e"
+path="res://.godot/imported/Lucy_idle_right.png-91b72a8b754ee1c200af36abdc8a5e29.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/Traje_Padrao/Lucy/Lucy_idle_rightt.png"
-dest_files=["res://.godot/imported/Lucy_idle_rightt.png-4ee62a0156ac67af52e7c815ae2f9b82.ctex"]
+source_file="res://Sprites/Traje_Padrao/Lucy/Lucy_idle_right.png"
+dest_files=["res://.godot/imported/Lucy_idle_right.png-91b72a8b754ee1c200af36abdc8a5e29.ctex"]
 
 [params]
 

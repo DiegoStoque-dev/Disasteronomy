@@ -521,6 +521,16 @@ public partial class ShipManager : Node2D
         // After Level 1 the Terminal does not load it again: the host opens the stored
         // report on every peer through the same RPC used for the countdown.
         Global? global = Global.Instance ?? GetNodeOrNull<Global>("/root/Global");
+
+        // Level 2 is finished too: the lobby is the end of the current content, so the
+        // terminal never loads Level 1 or Level 2 again — just a short in-lobby message.
+        if (global != null && global.Level2Completed)
+        {
+            hud?.ShowInteractPrompt(false);
+            RpcSystem("LEVEL 2 COMPLETE - LEVEL 3 NOT AVAILABLE YET");
+            return;
+        }
+
         if (global != null && global.Level1Completed)
         {
             hud?.ShowInteractPrompt(false);
