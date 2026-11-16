@@ -43,6 +43,8 @@ position = Vector2(3.5, 0)
 position = Vector2(332.0625, 124.5)
 shape = SubResource("RectangleShape2D_w4mfu")
 
+[node name="Players" type="Node2D" parent="."]
+
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1585614127]
 _spawnable_scenes = PackedStringArray("uid://1shx8uqhmok5")
-spawn_path = NodePath("..")
+spawn_path = NodePath("../Players")

@@ -734,10 +734,13 @@ private void BuildGrips()
 			result.Add((int)LocalPeerId);
 			return result;
 		}
-		int[] ids = _netHandler.Call("get_participants").AsInt32Array();
-		if (ids.Length == 0)
-			ids = _netHandler.Call("get_player_ids").AsInt32Array();
-		result.AddRange(ids);
+		foreach (Variant id in _netHandler.Call("get_participants").AsGodotArray())
+			result.Add(checked((int)id.AsInt64()));
+		if (result.Count == 0)
+		{
+			foreach (Variant id in _netHandler.Call("get_player_ids").AsGodotArray())
+				result.Add(checked((int)id.AsInt64()));
+		}
 		if (!result.Contains((int)LocalPeerId))
 			result.Add((int)LocalPeerId);
 		return result;

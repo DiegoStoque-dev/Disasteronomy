@@ -10,12 +10,6 @@ public enum CharacterId
     Roger = 3,
 }
 
-public enum CharacterSuit
-{
-    Standard,
-    Protection,
-}
-
 /// <summary>
 /// Static catalog of the playable characters: display name, identification color
 /// (Red = Ana, Purple = Lucy, Blue = Morgana, Green = Roger) and their suit sprite sheets.
@@ -43,31 +37,7 @@ public static class Characters
         new Color(0.25f, 0.80f, 0.35f), // Roger  - verde
     };
 
-    private static readonly string[] StandardIdleSheetPaths =
-    {
-        "res://Sprites/Traje_Padrao/Ana/Ana_idle_right.png",
-        "res://Sprites/Traje_Padrao/Lucy/Lucy_idle_rightt.png",
-        "res://Sprites/Traje_Padrao/Morgana/Morgana_idle_right.png",
-        "res://Sprites/Traje_Padrao/Roger/Roger_idle_right.png",
-    };
-
-    private static readonly string[] StandardWalkSheetPaths =
-    {
-        "res://Sprites/Traje_Padrao/Lucy/Ana_walk_right.png",
-        "res://Sprites/Traje_Padrao/Lucy/Lucy_walk_right.png",
-        "res://Sprites/Traje_Padrao/Morgana/Morgana_walk_right.png",
-        "res://Sprites/Traje_Padrao/Roger/Roger_walk_right.png",
-    };
-
-    private static readonly string[] StandardJumpSheetPaths =
-    {
-        "res://Sprites/Traje_Padrao/Ana/Ana_jump_right.png",
-        "res://Sprites/Traje_Padrao/Lucy/Lucy_jump_right.png",
-        "res://Sprites/Traje_Padrao/Morgana/Morgana_jump_right.png",
-        "res://Sprites/Traje_Padrao/Roger/Roger_jump_right.png",
-    };
-
-    private static readonly string[] ProtectionIdleSheetPaths =
+    private static readonly string[] IdleSheetPaths =
     {
         "res://Sprites/Traje_Protecao/Traje_Protecao_Ana/Idle/Ana_Idle.png",
         "res://Sprites/Traje_Protecao/Traje_Protecao_Lucy/Idle/Lucy_Idle.png",
@@ -84,7 +54,7 @@ public static class Characters
         "res://Sprites/Traje_Padrao/Roger/Roger_idle_right.png",
     };
 
-    private static readonly string[] ProtectionWalkSheetPaths =
+    private static readonly string[] WalkSheetPaths =
     {
         "res://Sprites/Traje_Protecao/Traje_Protecao_Ana/Walk/Ana_walk.png",
         "res://Sprites/Traje_Protecao/Traje_Protecao_Lucy/Walk/Lucy_walk.png",
@@ -101,7 +71,7 @@ public static class Characters
         "res://Sprites/Traje_Padrao/Roger/Roger_walk_right.png",
     };
 
-    private static readonly string[] ProtectionJumpSheetPaths =
+    private static readonly string[] JumpSheetPaths =
     {
         "res://Sprites/Traje_Protecao/Traje_Protecao_Ana/Jump/Ana_jump.png",
         "res://Sprites/Traje_Protecao/Traje_Protecao_Lucy/Jump/Lucy_jump.png",
@@ -151,71 +121,55 @@ public static class Characters
     /// Builds the "idle" SpriteFrames for a character. Defaults to the Standard suit;
     /// characters without a complete Standard set fall back to Protection everywhere.
     /// </summary>
-    public static SpriteFrames? BuildIdleFrames(int characterIndex)
-    {
-        if (!IsValid(characterIndex))
-            return null;
-
-        SpriteFrames? frames = SpriteSheetUtil.BuildFrames(
-            IdleSheetPaths[characterIndex],
-            FrameWidth,
-            FrameHeight,
-            IdleFps,
-            "idle",
-            loop: true);
-
-        if (frames == null)
-            GD.PushError($"Characters: idle sheet not found for {GetName(characterIndex)}.");
-
-        return frames;
-    }
+    public static SpriteFrames? BuildIdleFrames(
+        int characterIndex,
+        Suit suit = Suit.Standard,
+        string animationName = "idle")
+        => BuildAnimationFrames(
+            characterIndex, suit, IdleFps, animationName, IdleStandardPaths, IdleSheetPaths);
 
     /// <summary>"walk" frames for a character (8 frames per row, 32x34 each).</summary>
-    public static SpriteFrames? BuildWalkFrames(int characterIndex)
-    {
-        if (!IsValid(characterIndex))
-            return null;
-
-        SpriteFrames? frames = SpriteSheetUtil.BuildFrames(
-            WalkSheetPaths[characterIndex],
-            FrameWidth,
-            FrameHeight,
-            8f,
-            "walk",
-            loop: true);
-
-        if (frames == null)
-            GD.PushError($"Characters: walk sheet not found for {GetName(characterIndex)}.");
-
-        return frames;
-    }
+    public static SpriteFrames? BuildWalkFrames(
+        int characterIndex,
+        Suit suit = Suit.Standard,
+        string animationName = "walk")
+        => BuildAnimationFrames(
+            characterIndex, suit, 8f, animationName, WalkStandardPaths, WalkSheetPaths);
 
     /// <summary>"jump" frames for a character (used for the upward/vertical impulse).</summary>
-    public static SpriteFrames? BuildJumpFrames(int characterIndex)
+    public static SpriteFrames? BuildJumpFrames(
+        int characterIndex,
+        Suit suit = Suit.Standard,
+        string animationName = "jump")
+        => BuildAnimationFrames(
+            characterIndex, suit, 8f, animationName, JumpStandardPaths, JumpSheetPaths);
+
+    private static SpriteFrames? BuildAnimationFrames(
+        int characterIndex,
+        Suit suit,
+        float fps,
+        string animationName,
+        string[] standardPaths,
+        string[] protectionPaths)
     {
         if (!IsValid(characterIndex))
             return null;
 
-        SpriteFrames? frames = SpriteSheetUtil.BuildFrames(
-            JumpSheetPaths[characterIndex],
+        bool useStandard = suit == Suit.Standard && HasStandardSuit(characterIndex);
+        string path = useStandard ? standardPaths[characterIndex] : protectionPaths[characterIndex];
+        Texture2D? texture = GD.Load<Texture2D>(path);
+        if (texture == null)
+        {
+            GD.PushError($"Characters: {animationName} sheet not found for {GetName(characterIndex)}.");
+            return null;
+        }
+
+        return SpriteSheetUtil.BuildFrames(
+            path,
             FrameWidth,
-            FrameHeight,
-            8f,
-            "jump",
+            texture.GetHeight(),
+            fps,
+            animationName,
             loop: true);
-
-        if (frames == null)
-            GD.PushError($"Characters: jump sheet not found for {GetName(characterIndex)}.");
-
-        return frames;
     }
-
-    private static string[] GetIdleSheetPaths(CharacterSuit suit) =>
-        suit == CharacterSuit.Protection ? ProtectionIdleSheetPaths : StandardIdleSheetPaths;
-
-    private static string[] GetWalkSheetPaths(CharacterSuit suit) =>
-        suit == CharacterSuit.Protection ? ProtectionWalkSheetPaths : StandardWalkSheetPaths;
-
-    private static string[] GetJumpSheetPaths(CharacterSuit suit) =>
-        suit == CharacterSuit.Protection ? ProtectionJumpSheetPaths : StandardJumpSheetPaths;
 }
