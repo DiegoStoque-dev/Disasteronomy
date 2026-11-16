@@ -74,10 +74,9 @@ public partial class ShipManager : Node2D
         SetupMissionSummary();
         SetupObjectives();
         ConfigureSpawner();
-        SpawnPlayers();
-
         Multiplayer.PeerConnected += OnPeerConnected;
         Multiplayer.PeerDisconnected += OnPeerDisconnected;
+        SpawnPlayers();
 
         LogSystem("Você está a bordo da MPLM. Siga até o Terminal quando a equipe estiver pronta.");
         PlayIntroDialogue();
@@ -271,7 +270,20 @@ public partial class ShipManager : Node2D
         takenSpawnPositions.Clear();
 
         if (!IsHost)
+        {
+            // The host may have sent its initial spawn RPC before this scene
+            // existed on the client. Request the authoritative player list now
+            // that this ShipManager is ready to receive it.
+            RpcId(1, nameof(RpcRequestPlayerSnapshot));
             return;
+        }
+
+        if (!Multiplayer.HasMultiplayerPeer())
+        {
+            Vector2 position = PickSpawnPosition();
+            RpcSpawnPlayer((int)LocalPeerId, position.X, position.Y);
+            return;
+        }
 
         // Broadcast every player (host + peers) once: each peer then deterministically
         // builds its own local player and the replicas in its own tree, so the
@@ -290,13 +302,47 @@ public partial class ShipManager : Node2D
         Rpc(nameof(RpcSpawnPlayer), (int)peerId, position.X, position.Y);
     }
 
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
+    private void RpcRequestPlayerSnapshot()
+    {
+        if (!IsHost || playersRoot == null)
+            return;
+
+        int requesterId = (int)Multiplayer.GetRemoteSenderId();
+        bool isConnectedPeer = false;
+        foreach (int peerId in Multiplayer.GetPeers())
+        {
+            if (peerId == requesterId)
+            {
+                isConnectedPeer = true;
+                break;
+            }
+        }
+
+        if (!isConnectedPeer)
+            return;
+
+        foreach (Node child in playersRoot.GetChildren())
+        {
+            if (child is not Player player || !int.TryParse(player.Name, out int playerId))
+                continue;
+
+            RpcId(
+                requesterId,
+                nameof(RpcSpawnPlayer),
+                playerId,
+                player.GlobalPosition.X,
+                player.GlobalPosition.Y);
+        }
+    }
+
     /// <summary>
     /// Runs on every peer: deterministically instantiates the player for a peer
     /// id under "Players", names it (peer id -> authority), clamps it inside the
     /// ship and, for the local peer, enables the following camera. This guarantees
     /// the client both has its own character AND sees the replicated remote ones.
     /// </summary>
-    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
     private void RpcSpawnPlayer(int peerId, float x, float y)
     {
         if (playersRoot == null)
@@ -437,7 +483,7 @@ public partial class ShipManager : Node2D
         Rpc(nameof(RpcRemovePlayer), (int)peerId);
     }
 
-    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
     private void RpcRemovePlayer(int peerId)
     {
         Node? node = playersRoot?.GetNodeOrNull<Player>(peerId.ToString());

@@ -25,8 +25,8 @@ using Godot;
 ///     manager from the LineEdit focus): typing A/D/Space only enters text and
 ///     the character never moves until the focus is released.
 ///
-/// Sprites come from the Characters catalog (Sprites/Traje_Protecao/...), so each
-/// character shows its own suit: idle/walk/jump, flipped by horizontal velocity.
+/// Sprites come from the Characters catalog: the standard suit is used outside
+/// Phase 2, which uses the protection suit. Animations flip with horizontal velocity.
 /// </summary>
 public partial class Player : CharacterBody2D
 {
@@ -198,9 +198,10 @@ public partial class Player : CharacterBody2D
         SpriteFrames combined = new();
         combined.RemoveAnimation("default");
 
-        SpriteFrames? idle = Characters.BuildIdleFrames(characterIndex);
-        SpriteFrames? walk = Characters.BuildWalkFrames(characterIndex);
-        SpriteFrames? jump = Characters.BuildJumpFrames(characterIndex);
+        CharacterSuit suit = Characters.GetSuitForCurrentScene(GetTree());
+        SpriteFrames? idle = Characters.BuildIdleFrames(characterIndex, suit);
+        SpriteFrames? walk = Characters.BuildWalkFrames(characterIndex, suit);
+        SpriteFrames? jump = Characters.BuildJumpFrames(characterIndex, suit);
 
         MergeAnimation(combined, idle, "idle");
         MergeAnimation(combined, walk, "walk");
