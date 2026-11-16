@@ -7,7 +7,7 @@ using System.Collections.Generic;
 /// Purely visual and local (screen-space FX layer): it never collides or blocks.
 /// Fades in (~1 s), drifts toward the screen center, holds, then fades out (~1 s).
 /// Each ghost randomly picks one frame from any loaded creature texture
-/// (Sprites/Monsters + Sprites/Ansiedade); a soft rect is the fallback.
+/// (Sprites/Monsters + Sprites/Anxiety); a soft rect is the fallback.
 /// </summary>
 public partial class Ghost : Node2D
 {
@@ -29,8 +29,8 @@ public partial class Ghost : Node2D
         if (Cache.Count > 0)
             return;
         AddIfUsable("res://Sprites/Monsters/skuba.png");
-        AddIfUsable("res://Sprites/Ansiedade/Ansiedade_stage2.png");
-        AddIfUsable("res://Sprites/Ansiedade/Ansiedade_stage3.png");
+        AddIfUsable("res://Sprites/Anxiety/Anxiety_stage2.png");
+        AddIfUsable("res://Sprites/Anxiety/Anxiety_stage3.png");
     }
 
     private static void AddIfUsable(string path)

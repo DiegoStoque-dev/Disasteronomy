@@ -8,7 +8,7 @@ using System;
 /// countdown and the fade-to-black overlay used before switching to Phase 1.
 ///
 /// The panel mixes three kinds of messages in one place:
-///   - system/action log   (gray, [SISTEMA] prefix),
+///   - system/action log   (gray, [SYSTEM] prefix),
 ///   - character dialogues (colored by speaker, <<Name>> prefix),
 ///   - player chat          (white, "Nickname: text").
 ///
@@ -68,7 +68,7 @@ public partial class ShipHud : CanvasLayer
 
     public void LogSystem(string message)
     {
-        AppendLine($"[color={SystemColor}][SISTEMA][/color] {EscapeBbc(message)}");
+        AppendLine($"[color={SystemColor}][SYSTEM][/color] {EscapeBbc(message)}");
     }
 
     public void LogChat(string sender, string message)
@@ -99,7 +99,7 @@ public partial class ShipHud : CanvasLayer
         if (_countdownLabel == null)
             return;
 
-        _countdownLabel.Text = $"ATIVANDO O TERMINAL...  {remaining:F0}s";
+        _countdownLabel.Text = $"ACTIVATING TERMINAL...  {remaining:F0}s";
         _countdownLabel.Visible = true;
     }
 
@@ -224,21 +224,21 @@ public partial class ShipHud : CanvasLayer
 
         _chatInput = new LineEdit
         {
-            PlaceholderText = "Fale com a equipe... (Enter)",
+            PlaceholderText = "Chat with your team... (Enter)",
             MaxLength = 120,
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
         };
         _chatInput.TextSubmitted += SubmitChat;
         inputRow.AddChild(_chatInput);
 
-        var sendButton = new Button { Text = "Enviar" };
+        var sendButton = new Button { Text = "Send" };
         sendButton.Pressed += () => SubmitChat(_chatInput?.Text ?? "");
         inputRow.AddChild(sendButton);
 
         // --- Terminal interaction prompt (center-bottom) ---
         _interactPrompt = new Label
         {
-            Text = "E  -  ATIVAR TERMINAL",
+            Text = "E  -  ACTIVATE TERMINAL",
             HorizontalAlignment = HorizontalAlignment.Center,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
@@ -259,7 +259,7 @@ public partial class ShipHud : CanvasLayer
         // --- Countdown label (center, during the terminal activation) ---
         _countdownLabel = new Label
         {
-            Text = "ATIVANDO O TERMINAL...  5s",
+            Text = "ACTIVATING TERMINAL...  5s",
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             MouseFilter = Control.MouseFilterEnum.Ignore,

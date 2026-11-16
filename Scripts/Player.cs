@@ -3,8 +3,8 @@ using Godot;
 
 /// <summary>
 /// Lobby player — a 2D platformer inside the ship, built on the same logic as
-/// Sazsazan's character (Erika): horizontal A/D (mover_esquerda / mover_direita),
-/// Space jump (pular), MoveToward acceleration/friction, MoveAndSlide with
+/// Sazsazan's character (Erika): horizontal A/D (move_left / move_right),
+/// Space jump (jump), MoveToward acceleration/friction, MoveAndSlide with
 /// IsOnFloor/IsOnCeiling, coyote time and an extra (double) jump.
 ///
 /// The only difference from Earth platforming is the weaker adapted microgravity:
@@ -43,7 +43,7 @@ public partial class Player : CharacterBody2D
     /// <summary>Maximum fall speed (keeps physics stable, slow falls).</summary>
     [Export] public float TerminalFallSpeed = 280f;
     /// <summary>
-    /// Upward impulse applied by the jump command (pular). Apex height = v^2 / 2g
+    /// Upward impulse applied by the jump command. Apex height = v^2 / 2g
     /// = 240^2/(2*130) ~= 221px (close to the ~216px target); slow jump.
     /// </summary>
     [Export] public float JumpVelocity = -240f;
@@ -88,10 +88,8 @@ public partial class Player : CharacterBody2D
 
     public override void _Ready()
     {
-        // Register the Sazsazan actions (mover_esquerda/mover_direita/pular) since
-        // Disasteronomy's input map does not define them. Done before any input is
-        // read so Input.GetAxis no longer logs "action doesn't exist" every frame
-        // and the character can actually run.
+        // Ensure the movement actions are available before input is read, avoiding
+        // missing-action errors and keeping the character responsive.
         RegisterInputs();
 
         AddToGroup("network_players");
@@ -244,9 +242,9 @@ public partial class Player : CharacterBody2D
 
     /// <summary>
     /// Platformer physics mirroring Sazsazan's scheme, under adapted microgravity:
-    ///   - mover_esquerda / mover_direita (A/D): MoveToward with ground/air
+    ///   - move_left / move_right (A/D): MoveToward with ground/air
     ///     acceleration and ground friction (platformer, responsive stop).
-    ///   - pular (Space): jump impulse with coyote time and a double jump; only
+    ///   - jump (Space): jump impulse with coyote time and a double jump; only
     ///     reads input while InputEnabled (chat typing must not move the player).
     ///   - MicroGravity: a weak downward pull, capped at TerminalFallSpeed, so the
     ///     character floats up and sinks back gently (microgravity feel).
@@ -265,10 +263,10 @@ public partial class Player : CharacterBody2D
 
         float dt = (float)delta;
 
-        // --- Horizontal input (mover_esquerda / mover_direita), blocked by chat ---
+        // --- Horizontal input (move_left / move_right), blocked by chat ---
         float horizontal = 0f;
         if (InputEnabled)
-            horizontal = Input.GetAxis("mover_esquerda", "mover_direita");
+            horizontal = Input.GetAxis("move_left", "move_right");
 
         if (Mathf.Abs(horizontal) < InputDeadZone)
             horizontal = 0f;
@@ -313,8 +311,8 @@ public partial class Player : CharacterBody2D
             _coyoteTimer -= dt;
         }
 
-        // --- Jump (pular): normal (ground/coyote) or extra (double) jump ---
-        if (InputEnabled && Input.IsActionJustPressed("pular"))
+        // --- Jump: normal (ground/coyote) or extra (double) jump ---
+        if (InputEnabled && Input.IsActionJustPressed("jump"))
         {
             if (IsOnFloor() || _coyoteTimer > 0f)
             {
@@ -403,9 +401,9 @@ public partial class Player : CharacterBody2D
     /// <summary>Registers the Sazsazan input actions if they do not exist yet.</summary>
     private void RegisterInputs()
     {
-        EnsureAction("mover_esquerda", KeyEvents(Key.A, Key.Left));
-        EnsureAction("mover_direita", KeyEvents(Key.D, Key.Right));
-        EnsureAction("pular", KeyEvents(Key.Space));
+        EnsureAction("move_left", KeyEvents(Key.A, Key.Left));
+        EnsureAction("move_right", KeyEvents(Key.D, Key.Right));
+        EnsureAction("jump", KeyEvents(Key.Space));
     }
 
     private static void EnsureAction(string action, Godot.Collections.Array<InputEvent> events)

@@ -203,10 +203,10 @@ if (debugTimer >= 1.0)
 		BroadcastVoice(senderId, packet);
 	}
 
-	// Encaminha a voz aos outros jogadores
+	// Forwards voice data to the other players.
 	private void BroadcastVoice(long senderId, byte[] packet)
 	{
-		// O host reproduz a voz recebida dos clientes
+		// The host plays voice data received from clients.
 		if (senderId != Multiplayer.GetUniqueId())
 		{
 			PlayRemoteVoice(senderId, packet);
@@ -226,7 +226,7 @@ if (debugTimer >= 1.0)
 		}
 	}
 
-	// Recebe e reproduz a voz de outro jogador
+	// Receives and plays voice data from another player.
 	[Rpc(
 		MultiplayerApi.RpcMode.Authority,
 		CallLocal = false,
@@ -271,7 +271,7 @@ if (debugTimer >= 1.0)
 		}
 	}
 
-	// Cria um reprodutor para cada jogador
+	// Creates an audio player for each remote player.
 	private AudioStreamGeneratorPlayback? CreateRemotePlayer(long peerId)
 	{
 		AudioStreamGenerator generator = new AudioStreamGenerator();

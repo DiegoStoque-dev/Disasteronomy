@@ -1,17 +1,17 @@
 [gd_scene format=3 uid="uid://d1q8p8cfr6pf1"]
 
 [ext_resource type="Texture2D" uid="uid://cqawem11hpv6k" path="res://Sprites/UI/MainMenu/main menu/stars sheet.png" id="1_loo7a"]
-[ext_resource type="Texture2D" uid="uid://by12c8tkku7q1" path="res://Sprites/UI/MainMenu/botoes/start.png" id="2_8um5k"]
+[ext_resource type="Texture2D" uid="uid://by12c8tkku7q1" path="res://Sprites/UI/MainMenu/Buttons/start.png" id="2_8um5k"]
 [ext_resource type="Texture2D" uid="uid://bss6kj00g4pva" path="res://Sprites/UI/MainMenu/disasteronomy att.png" id="2_cmrfp"]
 [ext_resource type="Texture2D" uid="uid://d03ueaov06o0o" path="res://Sprites/UI/MainMenu/main menu/spaceship sheet.png" id="2_loo7a"]
-[ext_resource type="Texture2D" uid="uid://bu4mpokcogfcr" path="res://Sprites/UI/MainMenu/botoes/multiplayer.png" id="3_xim88"]
-[ext_resource type="Texture2D" uid="uid://buhg144nrx158" path="res://Sprites/UI/MainMenu/botoes/options.png" id="4_koqhg"]
-[ext_resource type="Texture2D" uid="uid://ds40q7vajaqnf" path="res://Sprites/UI/MainMenu/botoes/credits.png" id="5_cmrfp"]
-[ext_resource type="Texture2D" uid="uid://dcj7mxgmfmp10" path="res://Sprites/UI/MainMenu/botoes/leave.png" id="6_loo7a"]
-[ext_resource type="Texture2D" uid="uid://fbly4t0xeujx" path="res://Sprites/UI/MainMenu/botoes/create.png" id="7_koqhg"]
-[ext_resource type="Texture2D" uid="uid://bm67iy0mcy4n3" path="res://Sprites/UI/MainMenu/botoes/new game.png" id="8_cmrfp"]
-[ext_resource type="Texture2D" uid="uid://c73q8hxedn42j" path="res://Sprites/UI/MainMenu/botoes/load game.png" id="9_rrcx7"]
-[ext_resource type="Texture2D" uid="uid://djchtnmjq65tp" path="res://Sprites/UI/MainMenu/botoes/join.png" id="12_fh7cp"]
+[ext_resource type="Texture2D" uid="uid://bu4mpokcogfcr" path="res://Sprites/UI/MainMenu/Buttons/multiplayer.png" id="3_xim88"]
+[ext_resource type="Texture2D" uid="uid://buhg144nrx158" path="res://Sprites/UI/MainMenu/Buttons/options.png" id="4_koqhg"]
+[ext_resource type="Texture2D" uid="uid://ds40q7vajaqnf" path="res://Sprites/UI/MainMenu/Buttons/credits.png" id="5_cmrfp"]
+[ext_resource type="Texture2D" uid="uid://dcj7mxgmfmp10" path="res://Sprites/UI/MainMenu/Buttons/leave.png" id="6_loo7a"]
+[ext_resource type="Texture2D" uid="uid://fbly4t0xeujx" path="res://Sprites/UI/MainMenu/Buttons/create.png" id="7_koqhg"]
+[ext_resource type="Texture2D" uid="uid://bm67iy0mcy4n3" path="res://Sprites/UI/MainMenu/Buttons/new game.png" id="8_cmrfp"]
+[ext_resource type="Texture2D" uid="uid://c73q8hxedn42j" path="res://Sprites/UI/MainMenu/Buttons/load game.png" id="9_rrcx7"]
+[ext_resource type="Texture2D" uid="uid://djchtnmjq65tp" path="res://Sprites/UI/MainMenu/Buttons/join.png" id="12_fh7cp"]
 [ext_resource type="Script" uid="uid://main_menu_script" path="res://Scripts/UI/MainMenu.cs" id="13_fh7cp"]
 
 
@@ -49,7 +49,7 @@
 		if (MenuContainer == null || MenuStart == null ||
 			MenuMultiplayer == null || MenuOptions == null)
 		{
-			GD.PrintErr(\"MainMenu: Containers não encontrados.\");
+			GD.PrintErr(\"MainMenu: Containers were not found.\");
 			return;
 		}
 
@@ -89,11 +89,11 @@
 		if (node is BaseButton btn)
 		{
 			btn.Pressed += action;
-			GD.Print($\"Botão conectado: {nodeName}\");
+			GD.Print($\"Button connected: {nodeName}\");
 		}
 		else
 		{
-			GD.PrintErr($\"Botão não encontrado: {nodeName}\");
+			GD.PrintErr($\"Button not found: {nodeName}\");
 		}
 	}
 
@@ -151,7 +151,7 @@
 		_overlayAtual = overlay;
 		_mudandoMenu = false;
 
-		GD.Print($\"Overlay aberto: {overlay.Name}\");
+		GD.Print($\"Overlay opened: {overlay.Name}\");
 	}
 
 	private async void FecharOverlay()
@@ -172,7 +172,7 @@
 		_overlayAtual = null;
 		_mudandoMenu = false;
 
-		GD.Print(\"Overlay fechado\");
+		GD.Print(\"Overlay closed\");
 	}
 
 	public void _OnStartButtonPressed()
@@ -192,7 +192,7 @@
 
 	public void _OnCreditsButtonPressed()
 	{
-		GD.Print(\"Abrir créditos\");
+		GD.Print(\"Open credits\");
 		GetTree().ChangeSceneToFile(CreditsScenePath);
 	}
 
@@ -203,25 +203,25 @@
 
 	public void _OnLoadButtonPressed()
 	{
-		GD.Print(\"Carregar jogo\");
+		GD.Print(\"Load game\");
 		FecharOverlay();
 	}
 
 	public void _OnNewGameButtonPressed()
 	{
-		GD.Print(\"Novo jogo\");
+		GD.Print(\"New game\");
 		FecharOverlay();
 	}
 
 	public void _OnCreateButtonPressed()
 	{
-		GD.Print(\"Criar sala (Host)\");
+		GD.Print(\"Create room (Host)\");
 		GetTree().ChangeSceneToFile(MultiplayerScenePath);
 	}
 
 	public void _OnJoinButtonPressed()
 	{
-		GD.Print(\"Entrar na sala (Join)\");
+		GD.Print(\"Join room\");
 		GetTree().ChangeSceneToFile(MultiplayerScenePath);
 	}
 
@@ -274,13 +274,13 @@
 			_resolutionDropdown.AddItem(\"2560 x 1440 (QHD)\", 2);
 			_resolutionDropdown.AddItem(\"3840 x 2160 (4K UHD)\", 3);
 
-			Vector2I tamanhoAtual = DisplayServer.WindowGetSize();
+			Vector2I resolutionAtual = DisplayServer.WindowGetSize();
 			int indiceSelecionado = 1;
 
-			if (tamanhoAtual == new Vector2I(1280, 720)) indiceSelecionado = 0;
-			else if (tamanhoAtual == new Vector2I(1920, 1080)) indiceSelecionado = 1;
-			else if (tamanhoAtual == new Vector2I(2560, 1440)) indiceSelecionado = 2;
-			else if (tamanhoAtual == new Vector2I(3840, 2160)) indiceSelecionado = 3;
+			if (resolutionAtual == new Vector2I(1280, 720)) indiceSelecionado = 0;
+			else if (resolutionAtual == new Vector2I(1920, 1080)) indiceSelecionado = 1;
+			else if (resolutionAtual == new Vector2I(2560, 1440)) indiceSelecionado = 2;
+			else if (resolutionAtual == new Vector2I(3840, 2160)) indiceSelecionado = 3;
 
 			_resolutionDropdown.Selected = indiceSelecionado;
 			_resolutionDropdown.ItemSelected += _OnResolutionSelected;
@@ -300,26 +300,26 @@
 
 		if (_keysLabel != null)
 		{
-			_keysLabel.Text = ObterDescricaoTeclas();
+			_keysLabel.Text = GetKeyDescription();
 		}
 	}
 
-	private string ObterDescricaoTeclas()
+	private string GetKeyDescription()
 	{
-		var moverEsquerda = InputMap.ActionGetEvents(\"mover_esquerda\");
-		var moverDireita = InputMap.ActionGetEvents(\"mover_direita\");
-		var pular = InputMap.ActionGetEvents(\"pular\");
+		var moveLeft = InputMap.ActionGetEvents(\"move_left\");
+		var moveRight = InputMap.ActionGetEvents(\"move_right\");
+		var jump = InputMap.ActionGetEvents(\"jump\");
 		var voz = InputMap.ActionGetEvents(\"voice_chat\");
 
-		string teclaEsquerda = ObterNomeTecla(moverEsquerda);
-		string teclaDireita = ObterNomeTecla(moverDireita);
-		string teclaPular = ObterNomeTecla(pular);
-		string teclaVoz = ObterNomeTecla(voz);
+		string leftKey = GetKeyName(moveLeft);
+		string rightKey = GetKeyName(moveRight);
+		string jumpKey = GetKeyName(jump);
+		string voiceKey = GetKeyName(voz);
 
-		return $\"Teclas: {teclaEsquerda}/{teclaDireita} = Mover | {teclaPular} = Pular | {teclaVoz} = Voz\";
+		return $\"Keys: {leftKey}/{rightKey} = Move | {jumpKey} = Jump | {voiceKey} = Voice\";
 	}
 
-	private string ObterNomeTecla(Godot.Collections.Array<InputEvent> eventos)
+	private string GetKeyName(Godot.Collections.Array<InputEvent> eventos)
 	{
 		foreach (var ev in eventos)
 		{
@@ -328,12 +328,12 @@
 					? key.AsTextPhysicalKeycode()
 					: key.AsText();
 		}
-		return \"Não atribuído\";
+		return \"Unassigned\";
 	}
 
 	private void _OnResolutionSelected(long indice)
 	{
-		Vector2I tamanho = indice switch
+		Vector2I resolution = indice switch
 		{
 			0 => new Vector2I(1280, 720),
 			1 => new Vector2I(1920, 1080),
@@ -342,41 +342,41 @@
 			_ => new Vector2I(1920, 1080)
 		};
 
-		DisplayServer.WindowSetSize(tamanho);
-		GD.Print($\"Resolução alterada para: {tamanho.X} x {tamanho.Y}\");
+		DisplayServer.WindowSetSize(resolution);
+		GD.Print($\"Resolution changed to: {resolution.X} x {resolution.Y}\");
 	}
 
-	private void _OnVolumeChanged(double valor)
+	private void _OnVolumeChanged(double value)
 	{
 		int masterBus = AudioServer.GetBusIndex(\"Master\");
 		if (masterBus >= 0)
 		{
-			double volumeDb = Mathf.LinearToDb((float)valor);
+			double volumeDb = Mathf.LinearToDb((float)value);
 			AudioServer.SetBusVolumeDb(masterBus, (float)volumeDb);
-			GD.Print($\"Volume do Master alterado para: {valor:P0} ({volumeDb:F1} dB)\");
+			GD.Print($\"Master volume changed to: {value:P0} ({volumeDb:F1} dB)\");
 		}
 	}
 
-	public void RemapearTecla(string acao, Key novaTecla)
+	public void RemapearTecla(string action, Key newKey)
 	{
-		var eventosExistentes = InputMap.ActionGetEvents(acao);
+		var eventosExistentes = InputMap.ActionGetEvents(action);
 		foreach (var ev in eventosExistentes)
 		{
 			if (ev is InputEventKey)
-				InputMap.ActionEraseEvent(acao, ev);
+				InputMap.ActionEraseEvent(action, ev);
 		}
 
 		var novoEvento = new InputEventKey
 		{
-			Keycode = novaTecla,
+			Keycode = newKey,
 			Pressed = true
 		};
-		InputMap.ActionAddEvent(acao, novoEvento);
+		InputMap.ActionAddEvent(action, novoEvento);
 
-		GD.Print($\"Input Map remapeado: {acao} → {novaTecla}\");
+		GD.Print($\"Input Map remapped: {action} → {newKey}\");
 
 		if (_keysLabel != null)
-			_keysLabel.Text = ObterDescricaoTeclas();
+			_keysLabel.Text = GetKeyDescription();
 	}
 }
 "

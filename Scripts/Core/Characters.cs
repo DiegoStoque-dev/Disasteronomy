@@ -33,64 +33,64 @@ public static class Characters
 
     private static readonly Color[] IdColors =
     {
-        new Color(0.90f, 0.20f, 0.20f), // Ana    - vermelho
-        new Color(0.60f, 0.30f, 0.90f), // Lucy   - roxo
-        new Color(0.25f, 0.50f, 0.95f), // Morgana - azul
-        new Color(0.25f, 0.80f, 0.35f), // Roger  - verde
+        new Color(0.90f, 0.20f, 0.20f), // Ana - red
+        new Color(0.60f, 0.30f, 0.90f), // Lucy - purple
+        new Color(0.25f, 0.50f, 0.95f), // Morgana - blue
+        new Color(0.25f, 0.80f, 0.35f), // Roger - green
     };
 
     /// <summary>Idle sheets for the protection suit, one folder per character.</summary>
     private static readonly string[] IdleSheetPaths =
     {
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Ana/Idle/Ana_Idle.png",
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Lucy/Idle/Lucy_Idle.png",
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Morgana/Idle/Morgana_Idle.png",
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Roger/Idle/Roger_Idle.png",
+        "res://Sprites/ProtectionSuit/Ana/Idle/Ana_Idle.png",
+        "res://Sprites/ProtectionSuit/Lucy/Idle/Lucy_Idle.png",
+        "res://Sprites/ProtectionSuit/Morgana/Idle/Morgana_Idle.png",
+        "res://Sprites/ProtectionSuit/Roger/Idle/Roger_Idle.png",
     };
 
-    /// <summary>Standard (Traje_Padrao) idle sheets, one per character (_right facing).</summary>
+    /// <summary>Standard suit idle sheets, one per character (right-facing).</summary>
     private static readonly string[] IdleStandardPaths =
     {
-        "res://Sprites/Traje_Padrao/Ana/Ana_idle_right.png",
-        "res://Sprites/Traje_Padrao/Lucy/Lucy_idle_right.png",
-        "res://Sprites/Traje_Padrao/Morgana/Morgana_idle_right.png",
-        "res://Sprites/Traje_Padrao/Roger/Roger_idle_right.png",
+        "res://Sprites/StandardSuit/Ana/Ana_idle_right.png",
+        "res://Sprites/StandardSuit/Lucy/Lucy_idle_right.png",
+        "res://Sprites/StandardSuit/Morgana/Morgana_idle_right.png",
+        "res://Sprites/StandardSuit/Roger/Roger_idle_right.png",
     };
 
     /// <summary>"walk" sheets (filename casing varies per character, e.g. Roger_Walk).</summary>
     private static readonly string[] WalkSheetPaths =
     {
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Ana/Walk/Ana_walk.png",
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Lucy/Walk/Lucy_walk.png",
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Morgana/Walk/Morgana_walk.png",
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Roger/Walk/Roger_Walk.png",
+        "res://Sprites/ProtectionSuit/Ana/Walk/Ana_walk.png",
+        "res://Sprites/ProtectionSuit/Lucy/Walk/Lucy_walk.png",
+        "res://Sprites/ProtectionSuit/Morgana/Walk/Morgana_walk.png",
+        "res://Sprites/ProtectionSuit/Roger/Walk/Roger_Walk.png",
     };
 
-    /// <summary>Standard (Traje_Padrao) walk sheets (_right facing).</summary>
+    /// <summary>Standard suit walk sheets (right-facing).</summary>
     private static readonly string[] WalkStandardPaths =
     {
-        "res://Sprites/Traje_Padrao/Ana/Ana_walk_right.png",
-        "res://Sprites/Traje_Padrao/Lucy/Lucy_walk_right.png",
-        "res://Sprites/Traje_Padrao/Morgana/Morgana_walk_right.png",
-        "res://Sprites/Traje_Padrao/Roger/Roger_walk_right.png",
+        "res://Sprites/StandardSuit/Ana/Ana_walk_right.png",
+        "res://Sprites/StandardSuit/Lucy/Lucy_walk_right.png",
+        "res://Sprites/StandardSuit/Morgana/Morgana_walk_right.png",
+        "res://Sprites/StandardSuit/Roger/Roger_walk_right.png",
     };
 
     /// <summary>"jump" sheets (casing varies, e.g. Morgana_Jump and Roger_Jump).</summary>
     private static readonly string[] JumpSheetPaths =
     {
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Ana/Jump/Ana_jump.png",
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Lucy/Jump/Lucy_jump.png",
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Morgana/Jump/Morgana_Jump.png",
-        "res://Sprites/Traje_Protecao/Traje_Protecao_Roger/Jump/Roger_Jump.png",
+        "res://Sprites/ProtectionSuit/Ana/Jump/Ana_jump.png",
+        "res://Sprites/ProtectionSuit/Lucy/Jump/Lucy_jump.png",
+        "res://Sprites/ProtectionSuit/Morgana/Jump/Morgana_Jump.png",
+        "res://Sprites/ProtectionSuit/Roger/Jump/Roger_Jump.png",
     };
 
-    /// <summary>Standard (Traje_Padrao) jump sheets (_right facing).</summary>
+    /// <summary>Standard suit jump sheets (right-facing).</summary>
     private static readonly string[] JumpStandardPaths =
     {
-        "res://Sprites/Traje_Padrao/Ana/Ana_jump_right.png",
-        "res://Sprites/Traje_Padrao/Lucy/Lucy_jump_right.png",
-        "res://Sprites/Traje_Padrao/Morgana/Morgana_jump_right.png",
-        "res://Sprites/Traje_Padrao/Roger/Roger_jump_right.png",
+        "res://Sprites/StandardSuit/Ana/Ana_jump_right.png",
+        "res://Sprites/StandardSuit/Lucy/Lucy_jump_right.png",
+        "res://Sprites/StandardSuit/Morgana/Morgana_jump_right.png",
+        "res://Sprites/StandardSuit/Roger/Roger_jump_right.png",
     };
 
     public static bool IsValid(int index) => index >= 0 && index < Count;
@@ -112,7 +112,7 @@ public static class Characters
         return -1;
     }
 
-    /// <summary>True when the character has all three Standard (Traje_Padrao) sheets.</summary>
+    /// <summary>True when the character has all three standard suit sheets.</summary>
     public static bool HasStandardSuit(int index)
     {
         if (!IsValid(index))

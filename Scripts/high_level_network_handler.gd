@@ -26,7 +26,7 @@ const DISCOVERY_RESPONSE_PREFIX: String = "DISASTERONOMY_ROOM|"
 var peer: ENetMultiplayerPeer
 var _discovery_peer: PacketPeerUDP
 var _room_code: String = ""
-var local_nickname: String = "Jogador"
+var local_nickname: String = "Player"
 var _player_nicknames: Dictionary = {}
 var _player_characters: Dictionary = {}
 var _player_ready: Dictionary = {}

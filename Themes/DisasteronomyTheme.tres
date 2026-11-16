@@ -1,6 +1,6 @@
 [gd_resource type="Theme" format=3 uid="uid://bqx7ko4p31khe"]
 
-[ext_resource type="FontFile" uid="uid://c83si656dex5r" path="res://Fontes/Boiled Pasta.ttf" id="1_font"]
+[ext_resource type="FontFile" uid="uid://c83si656dex5r" path="res://Fonts/Boiled Pasta.ttf" id="1_font"]
 
 [sub_resource type="StyleBoxFlat" id="btn_disabled"]
 content_margin_left = 10.0

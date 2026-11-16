@@ -313,8 +313,8 @@ public partial class Global : Node
         if (mouse != null)
         {
             return mouse.ButtonIndex == MouseButton.Left
-                ? "Botão Esquerdo do Mouse"
-                : $"Botão {(int)mouse.ButtonIndex} do Mouse";
+                ? "Left Mouse Button"
+                : $"Mouse Button {(int)mouse.ButtonIndex}";
         }
 
         return action;

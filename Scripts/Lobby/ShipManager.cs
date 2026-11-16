@@ -32,10 +32,9 @@ public partial class ShipManager : Node2D
 {
     /// <summary>Seconds between the activation and the fade/transition.</summary>
     [Export] public float TerminalCountdown = 5f;
-    /// <summary>Scene opened after the fade (Phase 1 / EVA).</summary>
-    [Export] public string PhaseScenePath = "res://Scenes/Phase1/Phase1.tscn";
-    /// <summary>Level 2 scene. If it is missing, the lobby report stays in the lobby.</summary>
-    private const string Level2ScenePath = "res://Scenes/Phase2/Phase2.tscn";
+    /// <summary>Intro cutscene opened after the lobby countdown, before Phase 1.</summary>
+    [Export] public string PhaseScenePath = "res://Scenes/Cutscenes/IntroLvl1.tscn";
+    private const string EndingScenePath = "res://Scenes/Cutscenes/EdLvl1.tscn";
     /// <summary>Player scene spawned inside the lobby.</summary>
     [Export] public string PlayerScenePath = "res://Scenes/Player.tscn";
 
@@ -80,7 +79,7 @@ public partial class ShipManager : Node2D
         Multiplayer.PeerDisconnected += OnPeerDisconnected;
         SpawnPlayers();
 
-        LogSystem("Você está a bordo da MPLM. Siga até o Terminal quando a equipe estiver pronta.");
+        LogSystem("You are aboard the MPLM. Head to the Terminal when the team is ready.");
         PlayIntroDialogue();
     }
 
@@ -267,7 +266,7 @@ public partial class ShipManager : Node2D
         objectiveHud.Activate();
 
         GetNodeOrNull<Global>("/root/Global")?.SetObjective(
-            "Dirija-se ao Terminal e ative-o quando a equipe estiver pronta (apenas o host ativa).");
+            "Go to the Terminal and activate it when the team is ready (host only).");
     }
 
     // ------------------------------------------------------------------
@@ -485,8 +484,8 @@ public partial class ShipManager : Node2D
         SpawnPlayerForPeer(peerId);
 
         string nickname = GetNickname(peerId);
-        RpcSystem($"{nickname} entrou na partida. Jogadores totais: {Multiplayer.GetPeers().Length + 1}.");
-        RpcChat(GetNickname(peerId), "Olá, equipe! Cheguei a bordo.");
+        RpcSystem($"{nickname} joined the match. Total players: {Multiplayer.GetPeers().Length + 1}.");
+        RpcChat(GetNickname(peerId), "Hello, team! I'm aboard.");
     }
 
     private void OnPeerDisconnected(long peerId)
@@ -496,7 +495,7 @@ public partial class ShipManager : Node2D
 
         string nickname = GetNickname(peerId);
         if (!string.IsNullOrWhiteSpace(nickname))
-            RpcSystem($"{nickname} saiu da partida.");
+            RpcSystem($"{nickname} left the match.");
 
         // Remove the player replica on every peer, not just the host.
         Rpc(nameof(RpcRemovePlayer), (int)peerId);
@@ -541,37 +540,10 @@ public partial class ShipManager : Node2D
     private void OnSummaryContinue()
     {
         missionSummary?.HideScreen();
-
-        // Phase 2 is not built yet: show a short in-lobby message and stay here.
-        if (!ResourceLoader.Exists(Level2ScenePath))
-        {
-            LogSystem("LEVEL 2 - COMING SOON");
-            return;
-        }
-
-        // Phase 2 exists: the mission briefing is shown and, once its Start button
-        // dismisses the screen, the same mechanism as before loads Phase 2.
-        BriefingScreen briefing = BriefingScreen.Open(
-            this,
-            "LEVEL 2 - DSH",
-            "Comms with CAPCOM drop almost instantly and a light smoke spreads through the ship. " +
-            "By the time you put on your protection suits, it already covers half your view. " +
-            "The ship is now a maze: split up, find the ECLSS valves and the central module. " +
-            "Beware of shocks: touching one drains your sanity.",
-            "");
-        LoadLevel2AfterBriefing(briefing);
-    }
-
-    /// <summary>After the briefing's Start button dismisses it, loads Phase 2 (same mechanism as before).</summary>
-    private async void LoadLevel2AfterBriefing(BriefingScreen briefing)
-    {
-        await ToSignal(briefing, Node.SignalName.TreeExited);
-        if (!IsInstanceValid(this)) return;
-
         if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeScene(Level2ScenePath);
+            SceneTransitions.Instance.ChangeScene(EndingScenePath);
         else
-            GetTree().ChangeSceneToFile(Level2ScenePath);
+            GetTree().ChangeSceneToFile(EndingScenePath);
     }
 
     // ------------------------------------------------------------------
@@ -587,12 +559,11 @@ public partial class ShipManager : Node2D
         // report on every peer through the same RPC used for the countdown.
         Global? global = Global.Instance ?? GetNodeOrNull<Global>("/root/Global");
 
-        // Level 2 is finished too: the lobby is the end of the current content, so the
-        // terminal never loads Level 1 or Level 2 again — just a short in-lobby message.
+        // The campaign ends after Level 1, so the Terminal never starts another phase.
         if (global != null && global.Level2Completed)
         {
             hud?.ShowInteractPrompt(false);
-            RpcSystem("LEVEL 2 COMPLETE - LEVEL 3 NOT AVAILABLE YET");
+            RpcSystem("Campaign complete. Return to the main menu to start a new run.");
             return;
         }
 
@@ -608,8 +579,8 @@ public partial class ShipManager : Node2D
         countdownRemaining = TerminalCountdown;
 
         string hostName = GetNickname(LocalPeerId);
-        RpcSystem($"{hostName} ativou o Terminal.");
-        RpcDialogue("Comando", "Transição autorizada. Todos para o módulo de utilidades em 5 segundos.", -1);
+        RpcSystem($"{hostName} activated the Terminal.");
+        RpcDialogue("Mission Control", "Transition authorized. Prepare for EVA in 5 seconds.", -1);
 
         // The objective is completed once the Terminal is activated, so TAB stops
         // showing a pending goal from here on.
@@ -759,7 +730,7 @@ public partial class ShipManager : Node2D
         int localChar = GetLocalCharacterIndex();
         string speaker = Characters.GetName(localChar);
 
-        RpcDialogue("Comando", "Todos a postos. O Terminal libera o acesso ao módulo de utilidades.", -1);
-        RpcDialogue(speaker, "Entendido. Equipe, vou até o Terminal quando todos estiverem prontos.", localChar);
+        RpcDialogue("Mission Control", "Final checks complete. The EVA sequence is ready.", -1);
+        RpcDialogue(speaker, "Understood. Team, I'll head to the Terminal once everyone's ready.", localChar);
     }
 }

@@ -209,10 +209,10 @@ public override void _Ready()
 			if (long.TryParse(Name, out pid))
 			{
 				string nick = networkHandler.Call("get_player_nickname", pid).AsString();
-				nicknameLabel.Text = string.IsNullOrWhiteSpace(nick) ? $"Jogador {pid}" : nick;
+				nicknameLabel.Text = string.IsNullOrWhiteSpace(nick) ? $"Player {pid}" : nick;
 			}
 		}
-		catch { nicknameLabel.Text = $"Jogador {Name}"; }
+		catch { nicknameLabel.Text = $"Player {Name}"; }
 
 		saferCharges = SaferChargesDefault;
 	}
@@ -318,7 +318,7 @@ public override void _Input(InputEvent @event)
 	private void HandleSaferInput()
 	{
 		if (!EnableSafer) return;
-		if (!Input.IsActionJustPressed("pular")) return;
+		if (!Input.IsActionJustPressed("jump")) return;
 		if (saferCharges <= 0 || saferCooldownTimer > 0f) return;
 
 		// Detaching fires too: the jet pushes you off the grip.

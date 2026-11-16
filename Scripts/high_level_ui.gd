@@ -40,7 +40,7 @@ func _on_search_rooms_pressed() -> void:
 	room_list.clear()
 	_discovered_room_codes.clear()
 	_discovered_room_ips.clear()
-	room_status.text = "Procurando salas na rede..."
+	room_status.text = "Searching for rooms on the network..."
 	HighLevelNetworkHandler.discover_rooms()
 
 func _on_room_found(room_code: String, host_ip: String) -> void:
@@ -50,9 +50,9 @@ func _on_room_found(room_code: String, host_ip: String) -> void:
 
 func _on_room_search_completed(room_count: int) -> void:
 	if room_count == 0:
-		room_status.text = "Nenhuma sala encontrada."
+		room_status.text = "No rooms found."
 	else:
-		room_status.text = "%d sala(s) encontrada(s)." % room_count
+		room_status.text = "%d room(s) found." % room_count
 
 func _on_room_selected(index: int) -> void:
 	room_code_input.text = _discovered_room_codes[index]
@@ -60,8 +60,8 @@ func _on_room_selected(index: int) -> void:
 func _on_peer_activity(peer_id: int, joined: bool) -> void:
 	var nickname := HighLevelNetworkHandler.get_player_nickname(peer_id)
 	if nickname.is_empty():
-		nickname = "Jogador %d" % peer_id
-	var action: String = "entrou na sala" if joined else "saiu da sala"
+		nickname = "Player %d" % peer_id
+	var action: String = "joined the room" if joined else "left the room"
 	if activity_log == null:
 		print("%s %s." % [nickname, action])
 		return

@@ -51,10 +51,12 @@ on the **3rd** extreme the rope **breaks** and the player switches to the **shor
 phase (resetting the extreme counter and rope state). All of this is tunable on `EvaPlayer`
 (`max_extremes_before_break`, `tether_max_length`, `arm_reach`, ...).
 
-The lobby and Phase 1 use the character-specific default sprites from `Sprites/Traje_Padrao`.
-Phase 2 uses the protection sprites from `Sprites/Traje_Protecao`. The astronaut animations
-(`float` = Idle, `grab` = Walk) are built into a `SpriteFrames` at runtime. You can override
-the Phase 1 sprites by setting `SpriteFramesPath` to your own `.tres`/sprite resource.
+The lobby and Level 1 use character-specific standard suit sprites from `Sprites/StandardSuit`.
+Protection suit assets are in `Sprites/ProtectionSuit` for future use. The current campaign ends
+after Level 1: the results screen leads to the `EdLvl1` ending cutscene and then the end screen.
+Astronaut animations (`float` = Idle, `grab` = Walk) are built into a `SpriteFrames` at runtime.
+You can override the Level 1 sprites by setting `SpriteFramesPath` to your own `.tres`/sprite
+resource.
 
 ## 📁 Project structure
 
@@ -70,6 +72,7 @@ Scripts/
   Phase1/              Phase1Manager, EvaPlayer (rope/tether + SAFER), Handrail, CpsMinigame
   high_level_*.gd      ENet multiplayer handler + UI + spawner (GDScript)
 Sprites/               Space suits, UI/menu art, cutscenes, character sheets
+Fonts/                 Project fonts
 Music/                 Audio loops (SFX go in Music/sfx/)
 ```
 
@@ -83,11 +86,9 @@ Music/                 Audio loops (SFX go in Music/sfx/)
 
 ## 🗺️ Phases
 
-- **Phase 1 — Vacuum Calibration (implemented):** zero-gravity EVA, handrails, tether/rope with
-  break-on-extreme, SAFER jets, and a CPS spin-the-mouse minigame. Reached by running
-  `Scenes/Phase1/Phase1.tscn` (or from the menu via the intended flow).
-- **Phase 2 — ISS Lab ammonia leak (planned):** 3-player duct work + rebooting software.
-- **Phase 3 — dark MPLM maze (planned):** sanity bar + Orion capsule undocking.
+- **Level 1 — Vacuum Calibration:** zero-gravity EVA, handrails, tether/rope with break-on-extreme,
+  SAFER jets, and a CPS spin-the-mouse minigame. The campaign ends with the `EdLvl1` cutscene.
+- A Level 2 prototype remains in the project, but is not part of the current campaign flow.
 
 ## ⚙️ Included settings
 
@@ -100,4 +101,5 @@ Music/                 Audio loops (SFX go in Music/sfx/)
 ## 🧑‍💻 Contributing
 
 Created for a hackathon. Keep scenes/scripts small and self-contained; prefer targeted edits and back
-up files before big changes. See `SCOPO.md` for the design notes and roadmap.
+up files before big changes. See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the scene and script
+inventory.

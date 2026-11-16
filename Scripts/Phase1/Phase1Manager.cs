@@ -50,7 +50,7 @@ public partial class Phase1Manager : Node2D
 													  // sitting on the segment) are direct neighbors.
 
 	[Export] public float MissionTime = 0f;
-	[Export] public string NextScenePath = "res://Scenes/Phase2/Phase2.tscn";
+	[Export] public string NextScenePath = "res://Scenes/Cutscenes/EdLvl1.tscn";
 
 	// ==================================================================
 	// LEVEL 1 LAYOUT (all positions in IMAGE pixels; origin = top-left).
@@ -299,10 +299,10 @@ public partial class Phase1Manager : Node2D
 			InputMap.AddAction("grab");
 			InputMap.ActionAddEvent("grab", new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
 		}
-		if (!InputMap.HasAction("pular"))
+		if (!InputMap.HasAction("jump"))
 		{
-			InputMap.AddAction("pular");
-			InputMap.ActionAddEvent("pular", new InputEventKey { PhysicalKeycode = Key.Space });
+			InputMap.AddAction("jump");
+			InputMap.ActionAddEvent("jump", new InputEventKey { PhysicalKeycode = Key.Space });
 		}
 	}
 // ------------------------------------------------------------------
@@ -982,8 +982,8 @@ private void SetupScreens()
 		screenBtnRetry.Pressed += Retry;
 		screenContainer.AddChild(screenBtnRetry);
 
-		screenBtnNext = new Button { Text = "Next: Phase 2", Visible = false };
-		screenBtnNext.Pressed += GoToNextPhase;
+		screenBtnNext = new Button { Text = "Watch Ending", Visible = false };
+		screenBtnNext.Pressed += PlayEnding;
 		screenContainer.AddChild(screenBtnNext);
 
 		screenBtnMenu = new Button { Text = "Back to Menu" };
@@ -1076,18 +1076,16 @@ private void ShowSuccessScreen()
 		screenReason.Text = "Thermal actuators unfrozen. Pistol tool recovered and returned to the airlock.";
 		screenDetails.Text = $"Time: {MissionTime:F1}s | Energy: 160 kWh | Comms: stable (1.3-2s latency) | Mass: ~115,000 kg";
 		screenBtnRetry.Visible = false;
-		screenBtnNext.Visible = false;              // progression goes through the Lobby (Return to Lobby).
-		screenBtnMenu.Text = "Return to Lobby";
-		screenBtnMenu.Visible = true;
+		screenBtnNext.Text = "Watch Ending";
+		screenBtnNext.Visible = true;
+		screenBtnMenu.Visible = false;
 
 		// End-of-mission ranking (F-S). CONTINUE hides this overlay and the standard
-		// success buttons (Next phase / Back to Menu) appear below.
-		// TODO(flow): when a GameFlow/"return to DHS" progression exists, this should
-		// load the DHS (Level 2) scene instead of stopping on the result screen.
+		// success buttons appear below; continuing starts the final cutscene.
 		FindLocalPlayer();
 
-		// Remember the Level 1 result in memory only (Global). The Lobby Terminal uses it
-		// to show this report and route to Phase 2; ResetProgress() clears it for a new match.
+		// Remember the Level 1 result in memory only (Global); ResetProgress() clears it
+		// when a new match starts.
 		Global global = Global.Instance;
 		if (global != null)
 		{
@@ -1134,9 +1132,17 @@ private void ShowSuccessScreen()
 		GetTree().ChangeSceneToFile("res://Scenes/Phase1/Phase1.tscn");
 	}
 
-	private void GoToNextPhase()
+	private void PlayEnding()
 	{
-		if (ResourceLoader.Exists(NextScenePath))
+		if (!ResourceLoader.Exists(NextScenePath))
+		{
+			GD.PushError($"Ending scene was not found: {NextScenePath}");
+			return;
+		}
+
+		if (SceneTransitions.Instance != null)
+			SceneTransitions.Instance.ChangeScene(NextScenePath);
+		else
 			GetTree().ChangeSceneToFile(NextScenePath);
 	}
 
@@ -1146,25 +1152,9 @@ private void ShowSuccessScreen()
 	}
 
 	/// <summary>
-	/// The screen button means different things per screen: on the SUCCESS screen it returns the
-	/// player to the Lobby (where the Terminal routes to Phase 2); on every other screen (failure,
-	/// main menu) it stays a plain "Back to Menu".
+	/// The screen button returns to the menu on failure; successful runs use the ending button.
 	/// </summary>
-	private void OnScreenMenuPressed()
-	{
-		if (state == PhaseState.Completed)
-			ReturnToLobby();
-		else
-			BackToMenu();
-	}
-
-	private void ReturnToLobby()
-	{
-		if (SceneTransitions.Instance != null)
-			SceneTransitions.Instance.ChangeScene("res://Scenes/Lobby/lobby.tscn");
-		else
-			GetTree().ChangeSceneToFile("res://Scenes/Lobby/lobby.tscn");
-	}
+	private void OnScreenMenuPressed() => BackToMenu();
 }
 
 /// <summary>

@@ -4,7 +4,7 @@ extends MultiplayerSpawner
 
 func _ready() -> void:
 	if network_player == null:
-		push_error("A cena do jogador não foi atribuída ao MultiplayerSpawner.")
+		push_error("No player scene was assigned to the MultiplayerSpawner.")
 		return
 
 	multiplayer.peer_connected.connect(spawn_player)
@@ -19,14 +19,14 @@ func spawn_player(id: int) -> void:
 		return
 
 	if network_player == null:
-		push_error("A cena do jogador não foi atribuída ao MultiplayerSpawner.")
+		push_error("No player scene was assigned to the MultiplayerSpawner.")
 		return
 
 	var player: Node = network_player.instantiate()
 	player.name = str(id)
 	var player_2d := player as Node2D
 	if player_2d == null:
-		push_error("A cena do jogador precisa herdar Node2D.")
+		push_error("The player scene must inherit from Node2D.")
 		player.queue_free()
 		return
 	player_2d.position = Vector2(400 + (id - 1) * 80, 450)
@@ -35,7 +35,7 @@ func spawn_player(id: int) -> void:
 	if target_parent == null:
 		target_parent = get_parent()
 		if target_parent == null:
-			push_error("Nenhum pai válido foi encontrado para spawnar o jogador.")
+			push_error("No valid parent was found to spawn the player.")
 			return
 		target_parent.call_deferred("add_child", player)
 		return

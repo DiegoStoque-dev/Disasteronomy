@@ -44,7 +44,7 @@ offset_top = -41.5
 offset_right = 71.25
 offset_bottom = -18.5
 scale = Vector2(0.2, 0.2)
-text = "Jogador"
+text = "Player"
 horizontal_alignment = 1
 vertical_alignment = 1
 
