@@ -274,7 +274,7 @@ public override void _Input(InputEvent @event)
 
 		if (!locked)
 		{
-			if (DebugKeys && OS.IsDebugBuild() && f9Pressed && mgr != null)
+			if (DebugKeys && f9Pressed && mgr != null)
 				DebugTeleportNearCps(mgr);
 
 			HandleSaferInput();

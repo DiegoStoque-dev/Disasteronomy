@@ -71,9 +71,6 @@ public partial class Global : Node
     public bool Level1LastRuptured { get; set; } = false;
     public int Level1LastSafer { get; set; } = 0;
 
-    // --- Level 2 progress (in memory only) ---
-    public bool Level2Completed { get; set; } = false;
-
     /// <summary>Clears the in-memory Level 1 report. Called when a new match starts.</summary>
     public void ResetProgress()
     {
@@ -82,7 +79,6 @@ public partial class Global : Node
         Level1LastStrikes = 0;
         Level1LastRuptured = false;
         Level1LastSafer = 0;
-        Level2Completed = false;
     }
 
     private const string SaveHeader = "DISASTERONOMY_SAVE_V1";

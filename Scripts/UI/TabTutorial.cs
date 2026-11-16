@@ -18,9 +18,6 @@ public partial class TabTutorial : Control
     /// <summary>Scene opened when the player is done with the tutorial.</summary>
     [Export] public string NextScenePath = "";
 
-    /// <summary>NetSession exit-barrier name for the cutscene that hosts this tutorial.</summary>
-    [Export] public string ExitBarrierName = "";
-
     /// <summary>Objectives overlay that this tutorial unlocks.</summary>
     [Export] public NodePath HudPath = new("");
 
@@ -92,15 +89,8 @@ public partial class TabTutorial : Control
             return;
         }
 
-        string exitBarrier = ExitBarrierName;
-        if (string.IsNullOrEmpty(exitBarrier))
-        {
-            string? sceneName = GetTree().CurrentScene?.Name;
-            exitBarrier = ((string.IsNullOrEmpty(sceneName) ? "Cutscene" : sceneName) + "_Exit");
-        }
-
         if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeSceneSynchronized(NextScenePath, exitBarrier);
+            SceneTransitions.Instance.ChangeScene(NextScenePath);
         else
             GetTree().ChangeSceneToFile(NextScenePath);
     }

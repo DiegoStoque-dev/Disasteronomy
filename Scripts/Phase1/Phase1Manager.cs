@@ -92,21 +92,6 @@ public partial class Phase1Manager : Node2D
 	// ------------------------------------------------------------------
 	private PhaseState state = PhaseState.Start;
 	private readonly Dictionary<int, bool> playerCompleted = new();
-
-	// --- NetSession integration (host-authoritative, explicit participants) ---
-	private const string HandlerPath = "/root/HighLevelNetworkHandler";
-	private const string Phase1LoadedBarrier = "Phase1_Loaded";
-	private const string EvaPlayerScenePath = "res://Scripts/Phase1/EvaPlayer.tscn";
-	private const string MainMenuScenePath = "res://Scenes/MainMenu.tscn";
-
-	private Node _netHandler;
-	private Node2D playersRoot;
-	private bool _leavingNet;
-
-	private Node NetHandler => GetNodeOrNull(HandlerPath);
-	private bool IsHost => _netHandler == null || _netHandler.Call("is_host").AsBool();
-	private bool IsSolo => _netHandler == null || _netHandler.Call("is_solo").AsBool();
-	private long LocalPeerId => IsSolo ? 1 : (long)Multiplayer.GetUniqueId();
 	private bool localCompleted = false;
 	private string failureReason = "";
 
@@ -239,13 +224,7 @@ public partial class Phase1Manager : Node2D
 			}
 		}
 
-		if (!IsSolo)
-		{
-			// Multiplayer instantiates players through the NetSession barrier; the
-			// baked solo EvaPlayer child is not used in a session.
-			GetNodeOrNull<EvaPlayer>("EvaPlayer")?.QueueFree();
-		}
-		ConnectSessionAndBarrier();
+		TryEnsureHostPlayer();
 
 		UpdateObjective();
 		ValidateLayout();
@@ -306,15 +285,11 @@ public partial class Phase1Manager : Node2D
 	private void CompleteLevel()
 	{
 		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
-		if (IsHost && _netHandler != null)
-		{
-			// Host (or solo): record its own return and re-check the collective goal.
-			playerCompleted[(int)LocalPeerId] = true;
-			CheckCompletion();
-			return;
-		}
-		// Client: ask the host to record its return (the host decides the victory).
-		RpcId(1, nameof(RpcSubmitComplete));
+		int peerId = Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetUniqueId() : 1;
+		if (Multiplayer.HasMultiplayerPeer())
+			Rpc(nameof(RpcReportComplete), peerId);
+		else
+			RpcReportComplete(peerId);
 	}
 
 	private void RegisterGrabInput()
@@ -520,27 +495,14 @@ private void BuildGrips()
 
 	private void ConfigureSpawner()
 	{
-		// Keep every player in the same "Players" container so the spawn path always
-		// points at a node that exists (avoids process_simplify_path null errors).
-		playersRoot = GetNodeOrNull<Node2D>("Players");
-		if (playersRoot == null)
-		{
-			playersRoot = new Node2D { Name = "Players" };
-			AddChild(playersRoot);
-		}
-
 		spawner = GetNodeOrNull<MultiplayerSpawner>("MultiplayerSpawner");
 		if (spawner == null)
 		{
 			spawner = new MultiplayerSpawner { Name = "MultiplayerSpawner" };
 			AddChild(spawner);
 		}
-
-		// Set the spawn path BEFORE registering the spawnable scene (the scene cache
-		// resolves the path while registering), and reuse the exact EvaPlayer scene the
-		// Phase1.tscn bakes so host and every client instantiate the same node type.
-		spawner.SpawnPath = new NodePath("Players");
-		spawner.AddSpawnableScene(EvaPlayerScenePath);
+		spawner.SpawnPath = new NodePath(".");
+		spawner.AddSpawnableScene("res://Scenes/Phase1/EvaPlayer.tscn");
 		spawner.Spawned += OnPlayerSpawned;
 	}
 
@@ -571,46 +533,16 @@ private void BuildGrips()
 		return null;
 	}
 
-	private void SpawnPlayerForPeer(long peerId)
-	{
-		if (!IsHost || playersRoot == null)
-			return;
-		if (playersRoot.GetNodeOrNull(peerId.ToString()) != null)
-			return; // anti-duplicate by node name
-
-		PackedScene scene = GD.Load<PackedScene>(EvaPlayerScenePath);
-		if (scene == null)
-		{
-			GD.PushError("Phase1Manager: EvaPlayer scene not found.");
-			return;
-		}
-
-		var player = scene.Instantiate<EvaPlayer>();
-		player.Name = peerId.ToString();
-		player.SetMultiplayerAuthority((int)peerId);
-		playersRoot.AddChild(player); // host adds -> spawner replicates
-		GD.Print($"Level1: spawned player {peerId}");
-	}
-
-	private void DespawnPlayer(long peerId)
-	{
-		Node node = playersRoot?.GetNodeOrNull(peerId.ToString());
-		if (node == null)
-			return;
-		node.QueueFree(); // spawner mirrors the removal on every peer
-	}
-
 	private void SpawnSoloPlayer()
 	{
-		// Solo uses the baked EvaPlayer child; if it is somehow absent, create one.
 		foreach (Node child in GetChildren())
 			if (child is EvaPlayer p && p.Visible) return;
 		var player = new EvaPlayer { Name = "1" };
 		AddChild(player);
 		localPlayer = player;
 		player.SetMultiplayerAuthority(1, true);
-		SetupPlayerStart(player);
-		GD.Print($"Level1: solo player ready at {localPlayer.GlobalPosition}");
+		SetupPlayerStart(player);   // also covers the host-fallback spawn in MP.
+		GD.Print($"Level1: player spawned at {localPlayer.GlobalPosition}");
 	}
 
 	private void SetupPlayerStart(EvaPlayer p)
@@ -632,115 +564,23 @@ private void BuildGrips()
 
 	private void OnPlayerSpawned(Node node)
 	{
-		if (node is not EvaPlayer p)
-			return;
-		p.StartOnGrip(startGrip);
-		SetupCamera(p);
-		if (!IsSolo)
+		if (Multiplayer.HasMultiplayerPeer())
 			FindLocalPlayer();
-		GD.Print($"Level1: spawned player {p.Name} at {p.GlobalPosition}");
-	}
 
-	private void ConnectSessionAndBarrier()
-	{
-		_netHandler = NetHandler;
-		if (_netHandler == null)
+		if (node is EvaPlayer p && Multiplayer.HasMultiplayerPeer())
 		{
-			GD.PushError("Phase1Manager: HighLevelNetworkHandler autoload not found.");
-			return;
+			p.StartOnGrip(startGrip);
+			SetupCamera(p);
+			GD.Print($"Level1: spawned player {p.Name} at {p.GlobalPosition}");
 		}
-
-		Multiplayer.ServerDisconnected += OnServerDisconnected;
-		Multiplayer.PeerDisconnected += OnPeerDisconnected;
-
-		// Solo uses the baked EvaPlayer child; there is no barrier or replication.
-		if (IsSolo)
-			return;
-
-		// Connect BEFORE marking ready; every handler filters by barrier name.
-		_netHandler.Connect("all_ready", Callable.From<string>(OnAllReady));
-		_netHandler.Connect("peer_joined_scene", Callable.From<long>(OnPeerJoinedScene));
-		_netHandler.Connect("peer_left", Callable.From<long>(OnPeerLeft));
-		_netHandler.Connect("session_ended", Callable.From(OnSessionEnded));
-		_netHandler.Call("clear_barriers");
-		_netHandler.Call("mark_ready", Phase1LoadedBarrier);
 	}
 
-	private void OnAllReady(string barrierName)
+	private async void TryEnsureHostPlayer()
 	{
-		if (barrierName != Phase1LoadedBarrier || !IsHost)
-			return;
-		SpawnPlayers();
-	}
-
-	private void OnPeerJoinedScene(long peerId)
-	{
-		if (!IsHost || _netHandler == null)
-			return;
-		if (_netHandler.Call("is_ready", Phase1LoadedBarrier, (int)peerId).AsBool())
-			SpawnPlayerForPeer(peerId);
-	}
-
-	private void OnPeerLeft(long peerId)
-	{
-		if (!IsHost)
-			return;
-		DespawnPlayer(peerId);
-		CheckCompletion();
-	}
-
-	private void OnPeerDisconnected(long peerId)
-	{
-		if (!IsHost)
-			return;
-		DespawnPlayer(peerId);
-		CheckCompletion();
-	}
-
-	private void OnServerDisconnected()
-	{
-		if (_leavingNet)
-			return;
-		_leavingNet = true;
-		_netHandler?.Call("end_session");
-		if (SceneTransitions.Instance != null)
-			SceneTransitions.Instance.ChangeScene(MainMenuScenePath);
-		else
-			GetTree().ChangeSceneToFile(MainMenuScenePath);
-	}
-
-	private void OnSessionEnded()
-	{
-		playersRoot?.QueueFree();
-		playersRoot = null;
-		localPlayer = null;
-	}
-
-	private void SpawnPlayers()
-	{
-		if (!IsHost || playersRoot == null)
-			return;
-		foreach (int pid in GetParticipants())
-			SpawnPlayerForPeer(pid);
-	}
-
-	private List<int> GetParticipants()
-	{
-		var result = new List<int>();
-		if (_netHandler == null)
-			return result;
-		if (IsSolo)
-		{
-			result.Add((int)LocalPeerId);
-			return result;
-		}
-		int[] ids = _netHandler.Call("get_participants").AsInt32Array();
-		if (ids.Length == 0)
-			ids = _netHandler.Call("get_player_ids").AsInt32Array();
-		result.AddRange(ids);
-		if (!result.Contains((int)LocalPeerId))
-			result.Add((int)LocalPeerId);
-		return result;
+		await ToSignal(GetTree().CreateTimer(0.5f), SceneTreeTimer.SignalName.Timeout);
+		if (!IsInstanceValid(this) || !Multiplayer.HasMultiplayerPeer() || !Multiplayer.IsServer()) return;
+		if (FindLocalPlayer() == null)
+			SpawnSoloPlayer();
 	}
 private void SetupHud()
 	{
@@ -1190,65 +1030,40 @@ private void SetupScreens()
 		UpdateObjective();
 	}
 
-	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false)]
-	private void RpcSubmitComplete()
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+	private void RpcReportComplete(int peerId)
 	{
-		if (!IsHost)
-			return;
-		playerCompleted[(int)Multiplayer.GetRemoteSenderId()] = true;
+		playerCompleted[peerId] = true;
 		CheckCompletion();
 	}
 
-	/// <summary>Host only: collective victory when every participant is done.</summary>
 	private void CheckCompletion()
 	{
-		if (!IsHost)
-			return;
-		List<int> participants = GetParticipants();
-		if (participants.Count == 0)
-			return;
-
+		int required = Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetPeers().Length + 1 : 1;
 		int completed = 0;
-		foreach (int pid in participants)
-		{
-			if (playerCompleted.ContainsKey(pid) && playerCompleted[pid])
-				completed++;
-		}
+		foreach (var kv in playerCompleted)
+			if (kv.Value) completed++;
 
-		if (completed >= participants.Count)
+		if (completed >= required && state != PhaseState.Completed && state != PhaseState.Failed)
 		{
-			if (state == PhaseState.Completed || state == PhaseState.Failed)
-				return;
 			state = PhaseState.Completed;
-			Rpc(nameof(_AllComplete));
+			ShowSuccessScreen();
 		}
-	}
-
-	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
-	private void _AllComplete()
-	{
-		if (state == PhaseState.Completed || state == PhaseState.Failed)
-			return;
-		state = PhaseState.Completed;
-		ShowSuccessScreen();
 	}
 
 	public void OnMissionFailed(string reason)
 	{
-		// Host decides a mission failure and broadcasts it (never any_peer).
-		if (state == PhaseState.Completed || state == PhaseState.Failed || !IsHost)
-			return;
-		if (IsSolo)
-			RpcReportFailed(reason);
-		else
+		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
+		if (Multiplayer.HasMultiplayerPeer())
 			Rpc(nameof(RpcReportFailed), reason);
+		else
+			RpcReportFailed(reason);
 	}
 
-	[Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
+	[Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
 	private void RpcReportFailed(string reason)
 	{
-		if (state == PhaseState.Completed || state == PhaseState.Failed)
-			return;
+		if (state == PhaseState.Completed || state == PhaseState.Failed) return;
 		failureReason = reason;
 		state = PhaseState.Failed;
 		if (cpsMinigame != null && cpsMinigame.IsOpen) cpsMinigame.Close();

@@ -65,18 +65,8 @@ public partial class ShipManager : Node2D
     private readonly List<Vector2> takenSpawnPositions = new();
     private readonly Dictionary<int, Vector2> spawnPositionsByPeer = new();
 
-    private const string HandlerPath = "/root/HighLevelNetworkHandler";
-    private const string LobbyLoadedBarrier = "Lobby_Loaded";
-    private const string MainMenuScenePath = "res://Scenes/MainMenu.tscn";
-
-    private MultiplayerSpawner? _spawner;
-    private Node? _netHandler;
-    private bool _leavingNet;
-
-    private Node? NetHandler => GetNodeOrNull(HandlerPath);
-    private bool IsHost => _netHandler == null || _netHandler.Call("is_host").AsBool();
-    private bool IsSolo => _netHandler == null || _netHandler.Call("is_solo").AsBool();
-    private long LocalPeerId => IsSolo ? 1 : (long)Multiplayer.GetUniqueId();
+    private bool IsHost => Multiplayer.MultiplayerPeer == null || Multiplayer.IsServer();
+    private long LocalPeerId => Multiplayer.MultiplayerPeer == null ? 1 : Multiplayer.GetUniqueId();
 
     public override void _Ready()
     {
@@ -88,10 +78,16 @@ public partial class ShipManager : Node2D
         SetupMissionSummary();
         SetupObjectives();
         ConfigureSpawner();
-        ConnectSessionAndBarrier();
+        SpawnPlayers();
 
         Multiplayer.PeerConnected += OnPeerConnected;
         Multiplayer.PeerDisconnected += OnPeerDisconnected;
+
+        if (Multiplayer.HasMultiplayerPeer() && !IsHost)
+        {
+            RequestLobbyState();
+            lobbyStateRetryRemaining = LobbyStateRetryInterval;
+        }
 
         LogSystem("Você está a bordo da MPLM. Siga até o Terminal quando a equipe estiver pronta.");
         PlayIntroDialogue();
@@ -260,25 +256,8 @@ public partial class ShipManager : Node2D
     /// </summary>
     private void ConfigureSpawner()
     {
-        // The lobby scene already ships a MultiplayerSpawner whose only spawnable is
-        // the Player scene; reuse it (host adds a node and it replicates by itself).
-        _spawner = GetNodeOrNull<MultiplayerSpawner>("MultiplayerSpawner");
-        if (_spawner == null)
-        {
-            _spawner = new MultiplayerSpawner { Name = "MultiplayerSpawner" };
-            AddChild(_spawner);
-            _spawner.AddSpawnableScene(PlayerScenePath);
-        }
-
-        playersRoot = GetNodeOrNull<Node2D>("Players");
-        if (playersRoot == null)
-        {
-            playersRoot = new Node2D { Name = "Players", ZIndex = 1 };
-            AddChild(playersRoot);
-        }
-
-        _spawner.SpawnPath = new NodePath("Players");
-        _spawner.Spawned += OnPlayerSpawned;
+        playersRoot = new Node2D { Name = "Players", ZIndex = 1 };
+        AddChild(playersRoot);
     }
 
     private void SetupHud()
@@ -310,25 +289,85 @@ public partial class ShipManager : Node2D
     private void SpawnPlayers()
     {
         takenSpawnPositions.Clear();
+        spawnPositionsByPeer.Clear();
 
         if (!IsHost)
             return;
 
-        // Host spawns one player per explicit match participant (never derived from
-        // GetPeers().Length). The MultiplayerSpawner replicates each node to every
-        // peer; the name-based guard inside SpawnPlayerForPeer avoids duplicates.
-        foreach (int peerId in GetParticipants())
-            SpawnPlayerForPeer(peerId);
-
-        UpdatePlayerVisibility();
+        // Broadcast every player (host + peers) once: each peer then deterministically
+        // builds its own local player and the replicas in its own tree, so the
+        // client always has a character to control and a camera that follows it.
+        SpawnPlayerForPeer(LocalPeerId);
+        foreach (int peerId in Multiplayer.GetPeers())
+            if (peerId != Multiplayer.GetUniqueId())
+                SpawnPlayerForPeer(peerId);
     }
 
     private void SpawnPlayerForPeer(long peerId)
     {
         // Picks the random (central, non-overlapping) position on the host and
         // broadcasts the spawn so every peer creates the player at the same spot.
-        Vector2 position = PickSpawnPosition();
+        Vector2 position = GetOrCreateSpawnPosition((int)peerId);
         Rpc(nameof(RpcSpawnPlayer), (int)peerId, position.X, position.Y);
+    }
+
+    private Vector2 GetOrCreateSpawnPosition(int peerId)
+    {
+        if (spawnPositionsByPeer.TryGetValue(peerId, out Vector2 position))
+            return position;
+
+        position = PickSpawnPosition();
+        spawnPositionsByPeer.Add(peerId, position);
+        return position;
+    }
+
+    private void RequestLobbyState()
+    {
+        if (!Multiplayer.HasMultiplayerPeer() ||
+            Multiplayer.MultiplayerPeer.GetConnectionStatus() != MultiplayerPeer.ConnectionStatus.Connected)
+            return;
+
+        RpcId(1, nameof(RpcRequestLobbyState));
+    }
+
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer)]
+    private void RpcRequestLobbyState()
+    {
+        if (!IsHost)
+            return;
+
+        long requestingPeerId = Multiplayer.GetRemoteSenderId();
+        bool isConnectedPeer = false;
+        foreach (int peerId in Multiplayer.GetPeers())
+        {
+            if (peerId == requestingPeerId)
+            {
+                isConnectedPeer = true;
+                break;
+            }
+        }
+
+        if (!isConnectedPeer)
+            return;
+
+        var peerIds = new List<int> { (int)LocalPeerId };
+        foreach (int peerId in Multiplayer.GetPeers())
+            if (!peerIds.Contains(peerId))
+                peerIds.Add(peerId);
+
+        foreach (int peerId in peerIds)
+        {
+            Vector2 position = GetOrCreateSpawnPosition(peerId);
+            RpcId((int)requestingPeerId, nameof(RpcSpawnPlayer), peerId, position.X, position.Y);
+        }
+
+        RpcId((int)requestingPeerId, nameof(RpcLobbyStateComplete));
+    }
+
+    [Rpc(MultiplayerApi.RpcMode.Authority)]
+    private void RpcLobbyStateComplete()
+    {
+        lobbyStateReceived = true;
     }
 
     /// <summary>
@@ -337,7 +376,7 @@ public partial class ShipManager : Node2D
     /// ship and, for the local peer, enables the following camera. This guarantees
     /// the client both has its own character AND sees the replicated remote ones.
     /// </summary>
-    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true)]
     private void RpcSpawnPlayer(int peerId, float x, float y)
     {
         if (playersRoot == null)
@@ -347,7 +386,7 @@ public partial class ShipManager : Node2D
         }
 
         if (playersRoot.GetNodeOrNull(peerId.ToString()) != null)
-            return;
+            return; // already spawned this peer
 
         PackedScene? scene = GD.Load<PackedScene>(PlayerScenePath);
         if (scene == null)
@@ -358,7 +397,9 @@ public partial class ShipManager : Node2D
 
         var player = scene.Instantiate<Player>();
         player.Name = peerId.ToString();
+        player.Suit = CharacterSuit.Standard;
         player.GlobalPosition = ClampToWorld(new Vector2(x, y));
+        player.SetMultiplayerAuthority(peerId, true);
         playersRoot.AddChild(player);
 
         // Defensive: the AnimatedSprite2D may come from the scene with an editor
@@ -373,130 +414,13 @@ public partial class ShipManager : Node2D
             anim2D.Play();
         }
 
-        if (node.Name.ToString() == LocalPeerId.ToString())
+        if (peerId == LocalPeerId)
         {
             localPlayer = player;
-            player.SetCameraLimits(worldBounds);
-        }
-    }
-
-    private void ConnectSessionAndBarrier()
-    {
-        _netHandler = NetHandler;
-        if (_netHandler == null)
-        {
-            GD.PushError("ShipManager: HighLevelNetworkHandler autoload not found.");
-            return;
+            player.SetCameraLimits(worldBounds); // camera follows the local player
         }
 
-        // Connect BEFORE marking ready; every handler filters by barrier name and
-        // no listener relies on a blind OneShot connection.
-        _netHandler.Connect("all_ready", Callable.From<string>(OnAllReady));
-        _netHandler.Connect("peer_joined_scene", Callable.From<long>(OnPeerJoinedScene));
-        _netHandler.Connect("peer_left", Callable.From<long>(OnPeerLeft));
-        _netHandler.Connect("session_ended", Callable.From(OnSessionEnded));
-
-        // Fresh scene: drop stale barrier state, then confirm this scene is loaded.
-        _netHandler.Call("clear_barriers");
-        _netHandler.Call("mark_ready", LobbyLoadedBarrier);
-    }
-
-    private void OnAllReady(string barrierName)
-    {
-        if (barrierName != LobbyLoadedBarrier || !IsHost)
-            return;
-        SpawnPlayers();
-    }
-
-    private void OnPeerJoinedScene(long peerId)
-    {
-        if (!IsHost || _netHandler == null)
-            return;
-        if (_netHandler.Call("is_ready", LobbyLoadedBarrier, (int)peerId).AsBool())
-            SpawnPlayerForPeer(peerId);
-        UpdatePlayerVisibility();
-    }
-
-    private void OnPeerLeft(long peerId)
-    {
-        if (!IsHost)
-            return;
-        DespawnPlayer(peerId);
-        UpdatePlayerVisibility();
-    }
-
-    /// <summary>Host only: reveal players only to peers already inside this scene.</summary>
-    private void UpdatePlayerVisibility()
-    {
-        if (!IsHost || IsSolo || playersRoot == null || _netHandler == null)
-            return;
-
-        List<int> readyPeers = GetReadyScenePeers();
-        if (readyPeers.Count == 0)
-            return;
-
-        foreach (Node node in playersRoot.GetChildren())
-        {
-            var sync = node.GetNodeOrNull<MultiplayerSynchronizer>("MultiplayerSynchronizer");
-            if (sync == null)
-                continue;
-            foreach (int pid in readyPeers)
-                sync.SetVisibilityFor(pid, true);
-        }
-    }
-
-    private List<int> GetReadyScenePeers()
-    {
-        var result = new List<int>();
-        if (_netHandler == null || IsSolo)
-            return result;
-        foreach (int pid in GetParticipants())
-        {
-            if (_netHandler.Call("is_ready", LobbyLoadedBarrier, pid).AsBool())
-                result.Add(pid);
-        }
-        return result;
-    }
-
-    private List<int> GetParticipants()
-    {
-        var result = new List<int>();
-        if (_netHandler == null)
-            return result;
-        if (IsSolo)
-        {
-            result.Add((int)LocalPeerId);
-            return result;
-        }
-        int[] ids = _netHandler.Call("get_participants").AsInt32Array();
-        if (ids.Length == 0)
-            ids = _netHandler.Call("get_player_ids").AsInt32Array();
-        result.AddRange(ids);
-        if (!result.Contains((int)LocalPeerId))
-            result.Add((int)LocalPeerId);
-        return result;
-    }
-
-    private void OnServerDisconnected()
-    {
-        if (_leavingNet)
-            return;
-        _leavingNet = true;
-
-        _netHandler?.Call("end_session");
-
-        if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeScene(MainMenuScenePath);
-        else
-            GetTree().ChangeSceneToFile(MainMenuScenePath);
-    }
-
-    private void OnSessionEnded()
-    {
-        // Session closed: drop replicated players so nothing lingers.
-        playersRoot?.QueueFree();
-        playersRoot = null;
-        localPlayer = null;
+        GD.Print($"[Lobby] Spawned player {peerId} at {player.GlobalPosition}");
     }
 
     /// <summary>
@@ -575,10 +499,10 @@ public partial class ShipManager : Node2D
         if (!IsHost)
             return;
 
-        // Spawn now flows through the NetSession scene barrier (OnPeerJoinedScene),
-        // so here we just announce the newcomer to the crew.
+        SpawnPlayerForPeer(peerId);
+
         string nickname = GetNickname(peerId);
-        RpcSystem($"{nickname} entrou na partida.");
+        RpcSystem($"{nickname} entrou na partida. Jogadores totais: {Multiplayer.GetPeers().Length + 1}.");
         RpcChat(GetNickname(peerId), "Olá, equipe! Cheguei a bordo.");
     }
 
@@ -591,16 +515,21 @@ public partial class ShipManager : Node2D
         if (!string.IsNullOrWhiteSpace(nickname))
             RpcSystem($"{nickname} saiu da partida.");
 
+        spawnPositionsByPeer.Remove((int)peerId);
+
         // Remove the player replica on every peer, not just the host.
         Rpc(nameof(RpcRemovePlayer), (int)peerId);
     }
 
-    private void DespawnPlayer(long peerId)
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true)]
+    private void RpcRemovePlayer(int peerId)
     {
         Node? node = playersRoot?.GetNodeOrNull<Player>(peerId.ToString());
-        if (node == null)
-            return;
-        node.QueueFree(); // MultiplayerSpawner mirrors the removal on every peer
+        if (node != null)
+        {
+            playersRoot?.RemoveChild(node);
+            node.QueueFree();
+        }
     }
 
     // ------------------------------------------------------------------
@@ -676,16 +605,6 @@ public partial class ShipManager : Node2D
         // After Level 1 the Terminal does not load it again: the host opens the stored
         // report on every peer through the same RPC used for the countdown.
         Global? global = Global.Instance ?? GetNodeOrNull<Global>("/root/Global");
-
-        // Level 2 is finished too: the lobby is the end of the current content, so the
-        // terminal never loads Level 1 or Level 2 again — just a short in-lobby message.
-        if (global != null && global.Level2Completed)
-        {
-            hud?.ShowInteractPrompt(false);
-            RpcSystem("LEVEL 2 COMPLETE - LEVEL 3 NOT AVAILABLE YET");
-            return;
-        }
-
         if (global != null && global.Level1Completed)
         {
             hud?.ShowInteractPrompt(false);
@@ -818,7 +737,7 @@ public partial class ShipManager : Node2D
                 return nickname;
         }
 
-        if (IsSolo)
+        if (Multiplayer.MultiplayerPeer == null)
             return Characters.GetName(GetLocalCharacterIndex());
 
         return $"Player {peerId}";

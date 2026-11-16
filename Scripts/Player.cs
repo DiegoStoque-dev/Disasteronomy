@@ -75,7 +75,6 @@ public partial class Player : CharacterBody2D
     private long playerId;
     private int characterIndex;
     private string facing = "right";
-    private Characters.Suit suit = Characters.Suit.Standard;
     private float _coyoteTimer;
     private int _extraJumpsLeft;
     private Vector2 remoteTargetPosition;
@@ -244,9 +243,9 @@ public partial class Player : CharacterBody2D
         SpriteFrames combined = new();
         combined.RemoveAnimation("default");
 
-        SpriteFrames? idle = Characters.BuildIdleFrames(characterIndex);
-        SpriteFrames? walk = Characters.BuildWalkFrames(characterIndex);
-        SpriteFrames? jump = Characters.BuildJumpFrames(characterIndex);
+        SpriteFrames? idle = Characters.BuildIdleFrames(characterIndex, Suit);
+        SpriteFrames? walk = Characters.BuildWalkFrames(characterIndex, Suit);
+        SpriteFrames? jump = Characters.BuildJumpFrames(characterIndex, Suit);
 
         MergeAnimation(combined, idle, "idle");
         MergeAnimation(combined, walk, "walk");
@@ -258,18 +257,6 @@ public partial class Player : CharacterBody2D
         sprite.SpriteFrames = combined;
         sprite.Play("idle");
         sprite.FlipH = facing == "left";
-    }
-
-    /// <summary>
-    /// Switches the suit shown by the character (Standard by default everywhere;
-    /// Level 2 switches to Protection). Rebuilds the sprite frames in place.
-    /// </summary>
-    public void SetSuit(Characters.Suit newSuit)
-    {
-        if (suit == newSuit || !IsInsideTree())
-            return;
-        suit = newSuit;
-        BuildCharacterSprite();
     }
 
     private static void MergeAnimation(SpriteFrames target, SpriteFrames? source, string animationName)

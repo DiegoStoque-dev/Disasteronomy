@@ -76,9 +76,6 @@ public partial class MatchSetup : Control
 
         ConnectNetworkSignals();
 
-        if (_handler != null)
-            _handler.Connect("rejected_after_start", Callable.From(OnRejectedAfterStart));
-
         StartFlybyThenPanel();
 
         // The session is set up after the first frame so the UI already exists.
@@ -100,12 +97,11 @@ public partial class MatchSetup : Control
     /// </summary>
     private void StartOrJoinSession()
     {
-        bool solo = _handler == null || _handler.Call("is_solo").AsBool();
-        if (solo)
+        if (Multiplayer.MultiplayerPeer == null)
             _handler?.Call("start_server", "");
 
-        _isHost = _handler == null || _handler.Call("is_host").AsBool();
-        _localId = solo ? 1 : (long)Multiplayer.GetUniqueId();
+        _isHost = Multiplayer.MultiplayerPeer == null || Multiplayer.IsServer();
+        _localId = Multiplayer.GetUniqueId();
 
         RefreshAll();
     }
@@ -634,10 +630,9 @@ public partial class MatchSetup : Control
 
         // The host started the mission: everyone begins the shared intro chain
         // together (Cutscene1 -> Cutscene2 -> Cutscene3), which then leads into
-        // Phase 1. The cutscenes still play - nothing is skipped. All peers confirm
-        // they are leaving this scene through the MatchSetup_Exit barrier.
+        // Phase 1. The cutscenes still play - nothing is skipped.
         if (SceneTransitions.Instance != null)
-            SceneTransitions.Instance.ChangeSceneSynchronized(CutsceneScenePath, "MatchSetup_Exit");
+            SceneTransitions.Instance.ChangeScene(CutsceneScenePath);
         else
             GetTree().ChangeSceneToFile(CutsceneScenePath);
     }
@@ -713,12 +708,6 @@ public partial class MatchSetup : Control
             return;
 
         GD.Print("[MatchSetup] Connection to the host was lost.");
-        OnBackPressed();
-    }
-
-    private void OnRejectedAfterStart()
-    {
-        GD.Print("[MatchSetup] You tried to join after the match already started.");
         OnBackPressed();
     }
 
